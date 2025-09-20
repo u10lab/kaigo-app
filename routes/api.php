@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\FreeeController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -19,7 +20,17 @@ use Illuminate\Support\Facades\Route;
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 
+// freee連携ルート（認証不要）
+Route::get('/freee/auth-url', [FreeeController::class, 'getAuthUrl']);
+Route::get('/freee/callback', [FreeeController::class, 'callback']);
+
 // 認証が必要なルート
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'user']);
+    
+    // freee連携API
+    Route::post('/freee/clock-in', [FreeeController::class, 'clockIn']);
+    Route::post('/freee/clock-out', [FreeeController::class, 'clockOut']);
+    Route::get('/freee/work-records', [FreeeController::class, 'getWorkRecords']);
+    Route::get('/freee/payroll', [FreeeController::class, 'getPayroll']);
 });
