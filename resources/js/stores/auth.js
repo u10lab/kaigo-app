@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '../services/api'
 
+// defineStoreで構成
 export const useAuthStore = defineStore('auth', () => {
   const user = ref({ id: 1, email: 'admin@test.com', name: '管理者', role: 'admin' })
   const token = ref('mock-admin-token')
