@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+// SPA用のルート - すべてのルートをVueアプリに委譲
+Route::get('/{any}', function () {
+    return view('app');
+})->where('any', '.*');
