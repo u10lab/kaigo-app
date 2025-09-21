@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\FreeeController;
+use App\Http\Controllers\Api\ServiceController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -33,4 +34,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/freee/clock-out', [FreeeController::class, 'clockOut']);
     Route::get('/freee/work-records', [FreeeController::class, 'getWorkRecords']);
     Route::get('/freee/payroll', [FreeeController::class, 'getPayroll']);
+    
+    // サービス記録API
+    Route::prefix('service')->group(function () {
+        Route::post('/start', [ServiceController::class, 'start']);
+        Route::post('/{id}/end', [ServiceController::class, 'end']);
+        Route::get('/records', [ServiceController::class, 'getRecords']);
+        Route::get('/current-status', [ServiceController::class, 'getCurrentStatus']);
+        Route::get('/clients', [ServiceController::class, 'getClients']);
+        Route::get('/service-types', [ServiceController::class, 'getServiceTypes']);
+    });
 });
