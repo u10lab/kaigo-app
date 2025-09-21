@@ -55,10 +55,10 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // 有給休暇管理API
     Route::prefix('paid-leave')->group(function () {
-        Route::get('/{userId}', [PaidLeaveController::class, 'getPaidLeaveStatus']);
         Route::get('/all', [PaidLeaveController::class, 'getAllPaidLeaveStatus']);
-        Route::post('/use', [PaidLeaveController::class, 'usePaidLeave']);
         Route::get('/five-day-check', [PaidLeaveController::class, 'checkFiveDayObligation']);
+        Route::post('/use', [PaidLeaveController::class, 'usePaidLeave']);
+        Route::get('/{userId}', [PaidLeaveController::class, 'getPaidLeaveStatus']);
         Route::put('/{userId}/grant', [PaidLeaveController::class, 'grantPaidLeave']);
     });
 });

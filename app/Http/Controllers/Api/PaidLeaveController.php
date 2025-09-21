@@ -76,8 +76,20 @@ class PaidLeaveController extends Controller
         try {
             $currentYear = now()->year;
             
+            // デバッグログ
+            Log::info('getAllPaidLeaveStatus called', ['currentYear' => $currentYear]);
+            
             // 全従業員の有給休暇状況取得
             $users = User::where('is_active', true)->get();
+            Log::info('Users found', ['count' => $users->count()]);
+            
+            if ($users->isEmpty()) {
+                return response()->json([
+                    'error' => 'アクティブな従業員が見つかりません。',
+                    'message' => 'is_active=trueの従業員が存在しません。',
+                ], 404);
+            }
+            
             $paidLeaveList = [];
 
             foreach ($users as $user) {
@@ -115,11 +127,14 @@ class PaidLeaveController extends Controller
         } catch (\Exception $e) {
             Log::error('All paid leave status fetch failed', [
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
                 'error' => '全従業員有給休暇状況の取得に失敗しました。',
                 'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ], 500);
         }
     }
