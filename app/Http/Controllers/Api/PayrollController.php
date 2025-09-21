@@ -130,7 +130,7 @@ class PayrollController extends Controller
             // freee APIから給与データ取得
             $payrollData = $this->freeeApiService->getPayroll(
                 'access_token_here', // 実際のトークン取得処理
-                $user->employee_id,
+                (int) $user->employee_id, // stringをintにキャスト
                 $month
             );
 
