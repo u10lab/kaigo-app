@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\FreeeController;
 use App\Http\Controllers\Api\ServiceController;
+use App\Http\Controllers\Api\PayrollController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -43,5 +44,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/current-status', [ServiceController::class, 'getCurrentStatus']);
         Route::get('/clients', [ServiceController::class, 'getClients']);
         Route::get('/service-types', [ServiceController::class, 'getServiceTypes']);
+    });
+    
+    // 給与計算API
+    Route::prefix('payroll')->group(function () {
+        Route::get('/calculate', [PayrollController::class, 'calculate']);
+        Route::post('/recalculate', [PayrollController::class, 'recalculate']);
     });
 });
