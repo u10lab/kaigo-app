@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\FreeeController;
 use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\PayrollController;
+use App\Http\Controllers\Api\PaidLeaveController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -50,5 +51,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('payroll')->group(function () {
         Route::get('/calculate', [PayrollController::class, 'calculate']);
         Route::post('/recalculate', [PayrollController::class, 'recalculate']);
+    });
+    
+    // 有給休暇管理API
+    Route::prefix('paid-leave')->group(function () {
+        Route::get('/{userId}', [PaidLeaveController::class, 'getPaidLeaveStatus']);
+        Route::get('/all', [PaidLeaveController::class, 'getAllPaidLeaveStatus']);
+        Route::post('/use', [PaidLeaveController::class, 'usePaidLeave']);
+        Route::get('/five-day-check', [PaidLeaveController::class, 'checkFiveDayObligation']);
+        Route::put('/{userId}/grant', [PaidLeaveController::class, 'grantPaidLeave']);
     });
 });
