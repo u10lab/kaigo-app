@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\FreeeController;
 use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\PayrollController;
 use App\Http\Controllers\Api\PaidLeaveController;
+use App\Http\Controllers\Api\ExportController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -60,5 +61,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/use', [PaidLeaveController::class, 'usePaidLeave']);
         Route::get('/{userId}', [PaidLeaveController::class, 'getPaidLeaveStatus']);
         Route::put('/{userId}/grant', [PaidLeaveController::class, 'grantPaidLeave']);
+    });
+    
+    // CSV出力API
+    Route::prefix('export')->group(function () {
+        Route::get('/care-insurance/{month}', [ExportController::class, 'exportCareInsurance']);
+        Route::get('/care-insurance/{month}/stats', [ExportController::class, 'getCareInsuranceStats']);
     });
 });
