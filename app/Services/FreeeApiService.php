@@ -24,18 +24,22 @@ class FreeeApiService
     }
 
     /**
-     * OAuth認証URLを生成
+     * OAuth認証URLを生成（freee API3仕様準拠）
      */
     public function getAuthorizationUrl(): string
     {
+        $state = bin2hex(random_bytes(16)); // CSRF対策のランダム文字列
+        
         $params = http_build_query([
+            'response_type' => 'code',
             'client_id' => $this->clientId,
             'redirect_uri' => $this->redirectUri,
-            'response_type' => 'code',
-            'scope' => 'read write',
+            'state' => $state,
+            'prompt' => 'select_company'
         ]);
 
-        return "{$this->baseUrl}/oauth/authorize?{$params}";
+        // freee API3の正しい認証エンドポイント
+        return "https://accounts.secure.freee.co.jp/public_api/authorize?{$params}";
     }
 
     /**
@@ -44,13 +48,16 @@ class FreeeApiService
     public function getAccessToken(string $code): array
     {
         try {
-            $response = $this->httpClient->post("{$this->baseUrl}/oauth/token", [
+            $response = $this->httpClient->post('https://accounts.secure.freee.co.jp/public_api/token', [
                 'form_params' => [
                     'grant_type' => 'authorization_code',
                     'client_id' => $this->clientId,
                     'client_secret' => $this->clientSecret,
                     'code' => $code,
                     'redirect_uri' => $this->redirectUri,
+                ],
+                'headers' => [
+                    'Content-Type' => 'application/x-www-form-urlencoded',
                 ],
             ]);
 
@@ -99,13 +106,12 @@ class FreeeApiService
     public function clockIn(string $accessToken, int $employeeId): array
     {
         try {
-            $response = $this->httpClient->post("{$this->baseUrl}/hr/api/v1/work_records", [
+            $response = $this->httpClient->post("{$this->baseUrl}/hr/api/v1/employees/{$employeeId}/work_records", [
                 'headers' => [
                     'Authorization' => "Bearer {$accessToken}",
                     'Content-Type' => 'application/json',
                 ],
                 'json' => [
-                    'employee_id' => $employeeId,
                     'clock_in_at' => now()->toISOString(),
                 ],
             ]);
@@ -123,13 +129,12 @@ class FreeeApiService
     public function clockOut(string $accessToken, int $employeeId): array
     {
         try {
-            $response = $this->httpClient->post("{$this->baseUrl}/hr/api/v1/work_records", [
+            $response = $this->httpClient->post("{$this->baseUrl}/hr/api/v1/employees/{$employeeId}/work_records", [
                 'headers' => [
                     'Authorization' => "Bearer {$accessToken}",
                     'Content-Type' => 'application/json',
                 ],
                 'json' => [
-                    'employee_id' => $employeeId,
                     'clock_out_at' => now()->toISOString(),
                 ],
             ]);
@@ -200,6 +205,28 @@ class FreeeApiService
                 'expires_at' => now()->addSeconds($tokenData['expires_in']),
             ]
         );
+    }
+
+    /**
+     * 従業員一覧を取得
+     */
+    public function getEmployees(string $accessToken): array
+    {
+        try {
+            $response = $this->httpClient->get("{$this->baseUrl}/hr/api/v1/employees", [
+                'headers' => [
+                    'Authorization' => "Bearer {$accessToken}",
+                ],
+                'query' => [
+                    'limit' => 100, // 最大100件取得
+                ],
+            ]);
+
+            return json_decode($response->getBody()->getContents(), true);
+        } catch (GuzzleException $e) {
+            Log::error('Freee API employees error: ' . $e->getMessage());
+            throw new \Exception('従業員一覧の取得に失敗しました。');
+        }
     }
 
     /**

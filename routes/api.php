@@ -33,6 +33,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'user']);
     
     // freee連携API
+    Route::get('/freee/employees', [FreeeController::class, 'getEmployees']);
     Route::post('/freee/clock-in', [FreeeController::class, 'clockIn']);
     Route::post('/freee/clock-out', [FreeeController::class, 'clockOut']);
     Route::get('/freee/work-records', [FreeeController::class, 'getWorkRecords']);

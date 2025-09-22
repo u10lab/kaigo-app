@@ -72,7 +72,7 @@ class FreeeController extends Controller
 
         try {
             $accessToken = $token->getValidAccessToken();
-            $result = $this->freeeApiService->clockIn($accessToken, $user->employee_id);
+            $result = $this->freeeApiService->clockIn($accessToken, (int)$user->employee_id);
             
             return response()->json([
                 'message' => '勤務開始打刻が完了しました。',
@@ -101,7 +101,7 @@ class FreeeController extends Controller
 
         try {
             $accessToken = $token->getValidAccessToken();
-            $result = $this->freeeApiService->clockOut($accessToken, $user->employee_id);
+            $result = $this->freeeApiService->clockOut($accessToken, (int)$user->employee_id);
             
             return response()->json([
                 'message' => '勤務終了打刻が完了しました。',
@@ -131,7 +131,34 @@ class FreeeController extends Controller
 
         try {
             $accessToken = $token->getValidAccessToken();
-            $result = $this->freeeApiService->getWorkRecords($accessToken, $user->employee_id, $month);
+            $result = $this->freeeApiService->getWorkRecords($accessToken, (int)$user->employee_id, $month);
+            
+            return response()->json([
+                'data' => $result,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * 従業員一覧取得
+     */
+    public function getEmployees(Request $request)
+    {
+        $token = FreeeToken::first();
+        
+        if (!$token) {
+            return response()->json([
+                'error' => 'freee認証が完了していません。',
+            ], 400);
+        }
+
+        try {
+            $accessToken = $token->getValidAccessToken();
+            $result = $this->freeeApiService->getEmployees($accessToken);
             
             return response()->json([
                 'data' => $result,
@@ -160,7 +187,7 @@ class FreeeController extends Controller
 
         try {
             $accessToken = $token->getValidAccessToken();
-            $result = $this->freeeApiService->getPayroll($accessToken, $user->employee_id, $month);
+            $result = $this->freeeApiService->getPayroll($accessToken, (int)$user->employee_id, $month);
             
             return response()->json([
                 'data' => $result,
