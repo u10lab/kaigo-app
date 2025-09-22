@@ -89,7 +89,7 @@ const router = createRouter({
 })
 
 // ナビゲーションガード
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
   
   console.log('Router guard - navigating to:', to.path, 'from:', from.path)
@@ -98,6 +98,22 @@ router.beforeEach((to, from, next) => {
   if (to.path === '/login' || to.path === '/admin-demo' || to.path === '/helper-demo') {
     next()
     return
+  }
+  
+  // 認証初期化完了を待つ
+  if (!authStore.isInitialized) {
+    console.log('Auth not initialized, waiting...')
+    // 初期化完了まで待機
+    await new Promise(resolve => {
+      const checkInitialized = () => {
+        if (authStore.isInitialized) {
+          resolve()
+        } else {
+          setTimeout(checkInitialized, 10)
+        }
+      }
+      checkInitialized()
+    })
   }
   
   // 保護されたルートの認証チェック
