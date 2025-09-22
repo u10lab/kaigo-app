@@ -35,24 +35,20 @@ class FreeeController extends Controller
     public function callback(Request $request)
     {
         $code = $request->query('code');
+        $state = $request->query('state');
         
         if (!$code) {
-            return response()->json([
-                'error' => '認証コードが取得できませんでした。',
-            ], 400);
+            return redirect('/admin?error=no_code');
         }
 
         try {
             $tokenData = $this->freeeApiService->getAccessToken($code);
             
-            return response()->json([
-                'message' => 'freee認証が完了しました。',
-                'company_id' => $tokenData['company_id'],
-            ]);
+            // 認証成功後、管理者画面にリダイレクト
+            return redirect('/admin?freee_auth=success&company_id=' . $tokenData['company_id']);
         } catch (\Exception $e) {
-            return response()->json([
-                'error' => $e->getMessage(),
-            ], 500);
+            // エラー時、管理者画面にリダイレクト（エラーメッセージ付き）
+            return redirect('/admin?freee_auth=error&message=' . urlencode($e->getMessage()));
         }
     }
 
@@ -63,7 +59,7 @@ class FreeeController extends Controller
     {
         $user = Auth::user();
         $token = FreeeToken::first();
-        
+
         if (!$token) {
             return response()->json([
                 'error' => 'freee認証が完了していません。',
@@ -73,7 +69,7 @@ class FreeeController extends Controller
         try {
             $accessToken = $token->getValidAccessToken();
             $result = $this->freeeApiService->clockIn($accessToken, (int)$user->employee_id);
-            
+
             return response()->json([
                 'message' => '勤務開始打刻が完了しました。',
                 'data' => $result,
@@ -92,7 +88,7 @@ class FreeeController extends Controller
     {
         $user = Auth::user();
         $token = FreeeToken::first();
-        
+
         if (!$token) {
             return response()->json([
                 'error' => 'freee認証が完了していません。',
@@ -122,7 +118,7 @@ class FreeeController extends Controller
         $user = Auth::user();
         $month = $request->query('month', now()->format('Y-m'));
         $token = FreeeToken::first();
-        
+
         if (!$token) {
             return response()->json([
                 'error' => 'freee認証が完了していません。',
@@ -149,7 +145,7 @@ class FreeeController extends Controller
     public function getEmployees(Request $request)
     {
         $token = FreeeToken::first();
-        
+
         if (!$token) {
             return response()->json([
                 'error' => 'freee認証が完了していません。',
@@ -178,7 +174,7 @@ class FreeeController extends Controller
         $user = Auth::user();
         $month = $request->query('month', now()->format('Y-m'));
         $token = FreeeToken::first();
-        
+
         if (!$token) {
             return response()->json([
                 'error' => 'freee認証が完了していません。',

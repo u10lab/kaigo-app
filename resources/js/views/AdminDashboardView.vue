@@ -3,6 +3,14 @@
       <Navigation />
       <div class="absolute inset-0 bg-slate-900 bg-opacity-5"></div>
       
+      <!-- freee認証結果メッセージ -->
+      <div v-if="freeeAuthMessage" class="fixed top-4 right-4 z-50 max-w-sm">
+        <div :class="freeeAuthMessage.type === 'success' ? 'bg-green-500' : 'bg-red-500'" 
+             class="text-white px-4 py-3 rounded-lg shadow-lg">
+          {{ freeeAuthMessage.text }}
+        </div>
+      </div>
+      
       <div class="relative z-10 max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div class="px-4 py-6 sm:px-0">
           <h1 class="text-4xl font-bold text-slate-800 mb-8 text-center">
@@ -218,23 +226,55 @@
     </div>
   </template>
   
-  <script setup>
-  import { ref } from 'vue'
-  import { useFreeeStore } from '../stores/freee'
-  import Navigation from '../components/Navigation.vue'
+<script setup>
+import { ref, onMounted } from 'vue'
+import { useFreeeStore } from '../stores/freee'
+import Navigation from '../components/Navigation.vue'
+
+const freeeStore = useFreeeStore()
+
+const freeeAuthenticated = ref(false)
+const freeeAuthMessage = ref(null)
+
+// URLパラメータから認証結果を確認
+onMounted(() => {
+  const urlParams = new URLSearchParams(window.location.search)
+  const authStatus = urlParams.get('freee_auth')
+  const companyId = urlParams.get('company_id')
+  const errorMessage = urlParams.get('message')
   
-  const freeeStore = useFreeeStore()
-  
-  const freeeAuthenticated = ref(false)
-  
-  const handleFreeeAuth = async () => {
-    try {
-      const authUrl = await freeeStore.getAuthUrl()
-      window.location.href = authUrl
-    } catch (error) {
-      console.error('freee auth failed:', error)
-      // デモ用
-      freeeAuthenticated.value = true
+  if (authStatus === 'success') {
+    freeeAuthenticated.value = true
+    freeeAuthMessage.value = {
+      type: 'success',
+      text: `freee認証が完了しました。事業所ID: ${companyId}`
+    }
+    // 3秒後にメッセージを非表示
+    setTimeout(() => {
+      freeeAuthMessage.value = null
+    }, 3000)
+  } else if (authStatus === 'error') {
+    freeeAuthMessage.value = {
+      type: 'error',
+      text: `認証エラー: ${errorMessage}`
+    }
+    // 5秒後にメッセージを非表示
+    setTimeout(() => {
+      freeeAuthMessage.value = null
+    }, 5000)
+  }
+})
+
+const handleFreeeAuth = async () => {
+  try {
+    const authUrl = await freeeStore.getAuthUrl()
+    window.location.href = authUrl
+  } catch (error) {
+    console.error('freee auth failed:', error)
+    freeeAuthMessage.value = {
+      type: 'error',
+      text: '認証URL取得に失敗しました。'
     }
   }
-  </script>
+}
+</script>

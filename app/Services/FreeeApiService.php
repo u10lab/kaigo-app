@@ -29,7 +29,7 @@ class FreeeApiService
     public function getAuthorizationUrl(): string
     {
         $state = bin2hex(random_bytes(16)); // CSRF対策のランダム文字列
-        
+
         $params = http_build_query([
             'response_type' => 'code',
             'client_id' => $this->clientId,
@@ -89,7 +89,7 @@ class FreeeApiService
             ]);
 
             $data = json_decode($response->getBody()->getContents(), true);
-            
+
             // トークンを更新
             $this->updateToken($data);
 
@@ -106,13 +106,14 @@ class FreeeApiService
     public function clockIn(string $accessToken, int $employeeId): array
     {
         try {
-            $response = $this->httpClient->post("{$this->baseUrl}/hr/api/v1/employees/{$employeeId}/work_records", [
+            $response = $this->httpClient->post("{$this->baseUrl}/hr/api/v1/employees/{$employeeId}/time_clocks", [
                 'headers' => [
                     'Authorization' => "Bearer {$accessToken}",
                     'Content-Type' => 'application/json',
                 ],
                 'json' => [
-                    'clock_in_at' => now()->toISOString(),
+                    'type' => 'clock_in',
+                    'datetime' => now()->toISOString(),
                 ],
             ]);
 
@@ -129,13 +130,14 @@ class FreeeApiService
     public function clockOut(string $accessToken, int $employeeId): array
     {
         try {
-            $response = $this->httpClient->post("{$this->baseUrl}/hr/api/v1/employees/{$employeeId}/work_records", [
+            $response = $this->httpClient->post("{$this->baseUrl}/hr/api/v1/employees/{$employeeId}/time_clocks", [
                 'headers' => [
                     'Authorization' => "Bearer {$accessToken}",
                     'Content-Type' => 'application/json',
                 ],
                 'json' => [
-                    'clock_out_at' => now()->toISOString(),
+                    'type' => 'clock_out',
+                    'datetime' => now()->toISOString(),
                 ],
             ]);
 
