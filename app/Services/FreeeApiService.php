@@ -48,6 +48,13 @@ class FreeeApiService
     public function getAccessToken(string $code): array
     {
         try {
+            // デバッグ用ログ出力
+            Log::info('Freee API token request started', [
+                'client_id' => $this->clientId,
+                'redirect_uri' => $this->redirectUri,
+                'code_length' => strlen($code)
+            ]);
+
             $response = $this->httpClient->post('https://accounts.secure.freee.co.jp/public_api/token', [
                 'form_params' => [
                     'grant_type' => 'authorization_code',
@@ -61,7 +68,23 @@ class FreeeApiService
                 ],
             ]);
 
-            $data = json_decode($response->getBody()->getContents(), true);
+            $responseBody = $response->getBody()->getContents();
+            $data = json_decode($responseBody, true);
+            
+            // デバッグ用ログ出力 - freee公式レスポンス形式
+            Log::info('Freee API token response - Full Details', [
+                'status_code' => $response->getStatusCode(),
+                'response_body' => $responseBody,
+                'access_token' => $data['access_token'] ?? 'NOT_FOUND',
+                'token_type' => $data['token_type'] ?? 'NOT_FOUND',
+                'expires_in' => $data['expires_in'] ?? 'NOT_FOUND',
+                'refresh_token' => $data['refresh_token'] ?? 'NOT_FOUND',
+                'scope' => $data['scope'] ?? 'NOT_FOUND',
+                'created_at' => $data['created_at'] ?? 'NOT_FOUND',
+                'company_id' => $data['company_id'] ?? 'NOT_FOUND',
+                'external_cid' => $data['external_cid'] ?? 'NOT_FOUND',
+                'parsed_data' => $data
+            ]);
             
             // トークンをデータベースに保存
             $this->saveToken($data);
@@ -69,6 +92,11 @@ class FreeeApiService
             return $data;
         } catch (GuzzleException $e) {
             Log::error('Freee API token error: ' . $e->getMessage());
+            Log::error('Freee API token error details', [
+                'error' => $e->getMessage(),
+                'code' => $e->getCode(),
+                'response' => $e->getResponse() ? $e->getResponse()->getBody()->getContents() : null
+            ]);
             throw new \Exception('freee API認証に失敗しました。');
         }
     }

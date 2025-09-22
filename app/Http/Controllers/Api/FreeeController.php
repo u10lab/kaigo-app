@@ -36,18 +36,37 @@ class FreeeController extends Controller
     {
         $code = $request->query('code');
         $state = $request->query('state');
+        $error = $request->query('error');
+        
+        // エラーパラメータのチェック
+        if ($error) {
+            return redirect('/admin?freee_auth=error&message=' . urlencode($error));
+        }
         
         if (!$code) {
-            return redirect('/admin?error=no_code');
+            return redirect('/admin?freee_auth=error&message=' . urlencode('認証コードが取得できませんでした'));
         }
 
         try {
+            // 許可コードをログに記録（デバッグ用）
+            Log::info('Freee authorization code received', [
+                'code' => $code,
+                'state' => $state,
+                'timestamp' => now()
+            ]);
+            
+            // 許可コードをアクセストークンに交換
             $tokenData = $this->freeeApiService->getAccessToken($code);
             
             // 認証成功後、管理者画面にリダイレクト
             return redirect('/admin?freee_auth=success&company_id=' . $tokenData['company_id']);
         } catch (\Exception $e) {
             // エラー時、管理者画面にリダイレクト（エラーメッセージ付き）
+            Log::error('Freee callback error', [
+                'error' => $e->getMessage(),
+                'code' => $code,
+                'state' => $state
+            ]);
             return redirect('/admin?freee_auth=error&message=' . urlencode($e->getMessage()));
         }
     }
