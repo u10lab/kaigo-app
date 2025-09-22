@@ -17,8 +17,8 @@ return new class extends Migration
             $table->foreignId('client_id')->constrained()->onDelete('cascade');
             $table->foreignId('service_type_id')->constrained()->onDelete('cascade');
             $table->timestamp('service_start_time');
-            $table->timestamp('service_end_time');
-            $table->integer('service_minutes');
+            $table->timestamp('service_end_time')->nullable();
+            $table->integer('service_minutes')->nullable();
             $table->date('service_date');
             $table->enum('status', ['実施済み', 'キャンセル'])->default('実施済み');
             $table->text('notes')->nullable();
