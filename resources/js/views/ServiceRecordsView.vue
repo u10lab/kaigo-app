@@ -99,7 +99,7 @@
           <div class="card-enhanced shadow overflow-hidden rounded-2xl">
             <div class="px-4 py-5 sm:px-6 flex justify-between items-center">
               <h2 class="text-lg leading-6 font-medium text-text-primary">
-                サービス実施記録 ({{ formatMonth(filters.month) }})
+                サービス実施記録 {{ filters.month === 'all' ? '(全期間)' : `(${formatMonth(filters.month)})` }}
               </h2>
               <button
                 @click="exportToCsv"
@@ -193,59 +193,22 @@
   const serviceStore = useServiceStore()
   
   const filters = ref({
-    month: '2025-01',
+    month: 'all',
     clientId: '',
     serviceType: ''
   })
   
-  const serviceRecords = ref([
-    {
-      id: 1,
-      employee_name: '山田太郎',
-      client_name: '山田一郎',
-      service_type: '入浴介護',
-      start_time: '2025-01-15 09:00:00',
-      end_time: '2025-01-15 11:00:00',
-      duration: 120,
-      hourly_rate: 1500
-    },
-    {
-      id: 2,
-      employee_name: '山田太郎',
-      client_name: '田中花子',
-      service_type: '掃除',
-      start_time: '2025-01-15 13:00:00',
-      end_time: '2025-01-15 14:00:00',
-      duration: 60,
-      hourly_rate: 1200
-    },
-    {
-      id: 3,
-      employee_name: '山田太郎',
-      client_name: '佐々木健一',
-      service_type: '生活援助',
-      start_time: '2025-01-15 15:00:00',
-      end_time: '2025-01-15 16:30:00',
-      duration: 90,
-      hourly_rate: 1300
-    },
-    {
-      id: 4,
-      employee_name: '山田太郎',
-      client_name: '山田一郎',
-      service_type: '掃除',
-      start_time: '2025-01-16 10:00:00',
-      end_time: '2025-01-16 11:30:00',
-      duration: 90,
-      hourly_rate: 1200
-    }
-  ])
+  const serviceRecords = ref([])
   
   const months = [
+    { value: 'all', label: '全期間' },
     { value: '2025-01', label: '2025年1月' },
     { value: '2024-12', label: '2024年12月' },
     { value: '2024-11', label: '2024年11月' },
-    { value: '2024-10', label: '2024年10月' }
+    { value: '2024-10', label: '2024年10月' },
+    { value: '2024-09', label: '2024年9月' },
+    { value: '2024-08', label: '2024年8月' },
+    { value: '2024-07', label: '2024年7月' }
   ]
   
   const clients = computed(() => serviceStore.clients)
@@ -302,12 +265,29 @@
     return `${year}年${month}月`
   }
   
+  const errorMessage = ref('')
+  const loading = ref(false)
+
   const loadServiceRecords = async () => {
+    loading.value = true
+    errorMessage.value = ''
+
     try {
-      await serviceStore.fetchServiceRecords(filters.value.month)
-      // 現在はサービス記録にモックデータを使用
+      if (filters.value.month === 'all') {
+        // 全期間の場合は月指定なしで取得
+        const response = await serviceStore.fetchServiceRecords()
+        serviceRecords.value = response.records || []
+      } else {
+        // 特定月の取得
+        const response = await serviceStore.fetchServiceRecords(filters.value.month)
+        serviceRecords.value = response.records || []
+      }
     } catch (error) {
       console.error('Failed to load service records:', error)
+      errorMessage.value = error.message || 'サービス記録の取得に失敗しました'
+      serviceRecords.value = []
+    } finally {
+      loading.value = false
     }
   }
   

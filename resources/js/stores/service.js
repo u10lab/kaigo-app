@@ -47,24 +47,31 @@ export const useServiceStore = defineStore('service', () => {
 
   const fetchServiceRecords = async (month) => {
     try {
-      const response = await api.get('/service/records', { params: { month } })
-      serviceRecords.value = response.data.records
-      return response.data
+      const params = month ? { month } : {}
+      const response = await api.get('/service/records', { params })
+
+      // APIレスポンスの形式を確認して適切に処理
+      if (response.data.success && response.data.data) {
+        // ページネーション対応
+        const records = response.data.data.data || response.data.data
+        serviceRecords.value = records.map(record => ({
+          id: record.id,
+          employee_name: record.user?.name || 'Unknown',
+          client_name: record.client?.name || 'Unknown',
+          service_type: record.service_type?.name || 'Unknown',
+          start_time: record.service_start_time,
+          end_time: record.service_end_time,
+          duration: record.service_minutes || 0,
+          hourly_rate: record.service_type?.hourly_rate || 0
+        }))
+        return { records: serviceRecords.value }
+      } else {
+        throw new Error('Invalid API response format')
+      }
     } catch (error) {
       console.error('Fetch service records failed:', error)
-      // 現在はモックデータを返す
-      serviceRecords.value = [
-        {
-          id: 1,
-          client_name: '山田一郎',
-          service_type: '入浴介護',
-          start_time: '2025-01-15 09:00:00',
-          end_time: '2025-01-15 11:00:00',
-          duration: 120,
-          hourly_rate: 1500
-        }
-      ]
-      return { records: serviceRecords.value }
+      // エラーを再投げして呼び出し元で処理
+      throw new Error(`サービス記録の取得に失敗しました: ${error.message}`)
     }
   }
 

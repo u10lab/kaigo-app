@@ -128,10 +128,27 @@ class ServiceController extends Controller
     public function getRecords(Request $request)
     {
         try {
-            $query = ServiceRecord::with(['client', 'serviceType'])
-                ->where('user_id', Auth::id());
+            $user = Auth::user();
+            $query = ServiceRecord::with(['client', 'serviceType', 'user']);
 
-            // 日付範囲フィルタ
+            // ロール基準でのデータ分離
+            if ($user->role === 'helper') {
+                // ヘルパーは自分のデータのみ
+                $query->where('user_id', $user->id);
+            }
+            // 管理者(admin)は全従業員のデータを取得（where条件なし）
+
+            // 月別フィルタ（'2025-01'形式 → 日付範囲変換）
+            if ($request->has('month') && $request->month !== 'all') {
+                $year = substr($request->month, 0, 4);
+                $month = substr($request->month, 5, 2);
+                $startDate = "{$year}-{$month}-01";
+                $endDate = date('Y-m-t', strtotime($startDate)); // 月末日を自動取得
+
+                $query->whereBetween('service_date', [$startDate, $endDate]);
+            }
+
+            // 日付範囲フィルタ（直接指定の場合）
             if ($request->has('start_date')) {
                 $query->where('service_date', '>=', $request->start_date);
             }
@@ -156,7 +173,7 @@ class ServiceController extends Controller
 
             $records = $query->orderBy('service_date', 'desc')
                 ->orderBy('service_start_time', 'desc')
-                ->paginate($request->get('per_page', 20));
+                ->paginate($request->get('per_page', 50));
 
             return response()->json([
                 'success' => true,
