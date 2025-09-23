@@ -315,8 +315,11 @@ const isUpdatingEmployees = ref(false)
 const isFetchingEmployees = ref(false)
 const employeeUpdateResult = ref(null)
 
-// URLパラメータから認証結果を確認
-onMounted(() => {
+// 認証状態の確認とURLパラメータから認証結果を確認
+onMounted(async () => {
+  // まず現在の認証状態を確認
+  await checkFreeeAuthStatus()
+  
   const urlParams = new URLSearchParams(window.location.search)
   const authStatus = urlParams.get('freee_auth')
   const companyId = urlParams.get('company_id')
@@ -343,6 +346,17 @@ onMounted(() => {
     }, 5000)
   }
 })
+
+const checkFreeeAuthStatus = async () => {
+  try {
+    const authStatus = await freeeStore.checkAuthStatus()
+    freeeAuthenticated.value = authStatus.authenticated
+    console.log('Freee auth status:', authStatus)
+  } catch (error) {
+    console.error('Failed to check freee auth status:', error)
+    freeeAuthenticated.value = false
+  }
+}
 
 const handleFreeeAuth = async () => {
   try {

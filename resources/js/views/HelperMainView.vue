@@ -178,6 +178,14 @@
   }
   
   onMounted(async () => {
+    // freee認証状態を確認
+    try {
+      const authStatus = await freeeStore.checkAuthStatus()
+      console.log('Helper: Freee auth status:', authStatus)
+    } catch (error) {
+      console.error('Helper: Failed to check freee auth status:', error)
+    }
+
     // 有給休暇ステータスを読み込み
     try {
       const userId = authStore.user?.id
