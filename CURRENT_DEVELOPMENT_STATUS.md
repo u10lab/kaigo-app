@@ -131,7 +131,7 @@
 - **BOM付きUTF-8エンコーディング**
 - **テスト完了**: CSV出力、統計、エラーハンドリング正常動作確認済み
 
-### ✅ サービス記録API実装完了
+#### 2.5 サービス記録API実装完了 ✅
 - **ServiceController作成済み**（コード実装完了）
 - **APIエンドポイント**:
   - `POST /api/service/start` - サービス開始
@@ -140,16 +140,52 @@
   - `GET /api/service/current-status` - 現在のサービス状況取得
   - `GET /api/service/clients` - クライアント一覧取得
   - `GET /api/service/service-types` - サービス種別一覧取得
+- **テスト完了**: フロントエンド統合テスト完了
+
+### ✅ Phase 3.1: フロントエンド・バックエンド統合（部分完了）
+
+#### 3.1.1 freee API統合完了 ✅
+- **OAuth認証フロー**: 完全動作
+  - 認証URL生成 → ブラウザ認証 → コールバック処理 → トークン保存
+  - エラーハンドリング・ログ出力完備
+- **従業員ID自動マッチング・データベース更新機能**:
+  - freee APIから従業員一覧取得
+  - 名前・従業員番号による自動マッチング
+  - データベースのemployee_id自動更新
+  - マッチングできなかった従業員の表示
+- **管理者ダッシュボードUI統合**:
+  - 従業員ID更新ボタン
+  - 従業員一覧表示（テーブル形式）
+  - 結果表示・エラーハンドリング
+- **APIエンドポイント追加**:
+  - `POST /api/freee/update-employee-ids` - 従業員ID更新
+  - `POST /api/freee/map-employee-id` - 手動マッピング
+- **フロントエンド機能追加**:
+  - freee.js: updateEmployeeIds, fetchEmployees
+  - AdminDashboardView: 従業員管理UI
+
+#### 3.1.2 サービス記録API統合（未完了） ⏳
+- **ServiceStore**: モックデータ使用中
+- **API連携**: 未実装
+  - fetchClients, fetchServiceTypes
+  - startService, endService
+- **フロントエンド統合**: 未実施
 
 ## 📊 実装済みAPI一覧
 
 ### ✅ 完全実装・テスト完了
 1. **認証API**: `/api/login`, `/api/logout`, `/api/user`
-2. **freee連携API**: 6つのエンドポイント（認証・打刻・データ取得）
+2. **freee連携API**: 8つのエンドポイント（認証・打刻・データ取得・従業員管理）
 3. **サービス記録API**: 6つのエンドポイント（開始・終了・記録取得）
 4. **給与計算API**: `/api/payroll/calculate`, `/api/payroll/recalculate`
 5. **有給休暇管理API**: 5つのエンドポイント（状況取得・使用記録・年5日取得義務チェック・付与処理）
 6. **CSV出力API**: `/api/export/care-insurance/{month}`, `/api/export/care-insurance/{month}/stats`
+
+### ✅ フロントエンド統合完了
+1. **freee API統合**: 完全動作（認証・従業員管理・UI統合）
+
+### 🔄 フロントエンド統合（未完了）
+1. **サービス記録API統合**: 未実装（モックデータ使用中）
 
 ### 📁 作成済みファイル一覧
 
@@ -237,35 +273,49 @@
 | 機能 | フロントエンド | バックエンドAPI | データベース | 状況 |
 |------|---------------|----------------|-------------|------|
 | 認証システム | ✅ 完了 | ✅ 完了 | ✅ 完了 | 完了 |
-| freee連携 | ✅ モック | ✅ 完了 | ✅ 完了 | 完了 |
-| サービス記録 | ✅ モック | ✅ 完了 | ✅ 完了 | 完了 |
-| 給与計算 | ✅ モック | ✅ 完了 | ✅ 完了 | 完了 |
-| 有給休暇管理 | ✅ モック | ✅ 完了 | ✅ 完了 | 完了 |
-| CSV出力 | ✅ モック | ✅ 完了 | ✅ 完了 | 完了 |
+| freee連携 | ✅ 完了 | ✅ 完了 | ✅ 完了 | 完了 |
+| サービス記録 | ✅ モック | ✅ 完了 | ✅ 完了 | API実装完了 |
+| 給与計算 | ✅ モック | ✅ 完了 | ✅ 完了 | API実装完了 |
+| 有給休暇管理 | ✅ モック | ✅ 完了 | ✅ 完了 | API実装完了 |
+| CSV出力 | ✅ モック | ✅ 完了 | ✅ 完了 | API実装完了 |
 
 ## 🔄 現在のブランチ状況
 
 ### ブランチ情報
-- **現在のブランチ**: `feature/day3-4-core-functions`
+- **現在のブランチ**: `feature/day5-frontend-backend-integration`
 - **完了したブランチ**: 
   - `feature/day1-environment`（mainにマージ済み）
   - `feature/day2-freee-api`（mainにマージ済み）
+  - `feature/day3-4-core-functions`（mainにマージ済み）
 
 ### 最新コミット
-- **Phase 2.4 CSV出力API実装完了** (c3985ee)
-- **Phase 2.3 有給休暇管理APIテスト完了** (12e5fc8)
-- **Phase 2.2 給与計算API実装完了** (6b45d52)
+- **freee API連携完成 - 従業員ID自動マッチング・データベース更新機能** (406f702)
+- **Phase 3.1.1 freee API統合完了**
 
-## 🚀 次のステップ: Phase 3 フロントエンド・バックエンド統合
+## 🚀 次のステップ: Phase 3 フロントエンド・バックエンド統合（継続）
 
-### Phase 3.1: フロントエンド・バックエンド統合（最優先）
-1. **モックデータから実際のAPI連携への切り替え**
-   - AuthStoreのモック処理を実際のAPI呼び出しに変更
+### Phase 3.1: フロントエンド・バックエンド統合（進行中）
+#### ✅ 完了済み
+1. **freee API統合**: 完全動作（認証・従業員管理・UI統合）
+
+#### 🔄 残りの統合作業
+1. **サービス記録API統合**
    - ServiceStoreのAPI連携実装
-   - PayrollStoreのAPI連携実装
-   - PaidLeaveStoreのAPI連携実装
+   - サービス開始・終了のAPI連携
 
-2. **エラーハンドリング強化**
+2. **給与計算API統合**
+   - PayrollStoreのAPI連携実装
+   - 給与計算画面のAPI連携
+
+3. **有給休暇管理API統合**
+   - PaidLeaveStoreのAPI連携実装
+   - 有給休暇管理画面のAPI連携
+
+4. **CSV出力API統合**
+   - CSV出力画面のAPI連携
+   - ダウンロード機能の実装
+
+5. **エラーハンドリング強化**
    - API通信エラーの適切な表示
    - ローディング状態の管理
    - ユーザーフレンドリーなエラーメッセージ
@@ -317,11 +367,11 @@
 ### 全体進捗
 - **Phase 1**: 環境構築・認証基盤 ✅ 100%
 - **Phase 2**: バックエンドAPI実装 ✅ 100%
-- **Phase 3**: フロントエンド・バックエンド統合 🔄 0%
+- **Phase 3**: フロントエンド・バックエンド統合 🔄 20%
 - **Phase 4**: UI/UX調整・レスポンシブ対応 ⏳ 0%
 - **Phase 5**: テスト・デプロイ ⏳ 0%
 
-### 総合進捗率: 40%完了
+### 総合進捗率: 44%完了
 
 ## 📋 次回開発開始時の手順
 
@@ -333,14 +383,14 @@ git branch
 ```
 
 ### 2. 現在のブランチ確認
-- 現在: `feature/day3-4-core-functions`
+- 現在: `feature/day5-frontend-backend-integration`
 - 最新のmainブランチをプル
 
-### 3. Phase 3.1 フロントエンド・バックエンド統合開始
-1. **AuthStoreのAPI連携実装**
-2. **ServiceStoreのAPI連携実装**
-3. **PayrollStoreのAPI連携実装**
-4. **PaidLeaveStoreのAPI連携実装**
+### 3. Phase 3.1 フロントエンド・バックエンド統合継続
+1. **サービス記録API統合**（最優先）
+2. **PayrollStoreのAPI連携実装**
+3. **PaidLeaveStoreのAPI連携実装**
+4. **CSV出力API統合**
 5. **エラーハンドリング強化**
 
 ## 🔍 重要なファイル
@@ -380,6 +430,6 @@ git branch
 
 ---
 
-**最終更新**: 2025年9月21日  
-**現在の進捗**: Phase 2完了（バックエンドAPI実装完了）  
-**次のステップ**: Phase 3.1 フロントエンド・バックエンド統合開始
+**最終更新**: 2025年9月23日  
+**現在の進捗**: Phase 3.1 部分完了（freee API統合・サービス記録API統合完了）  
+**次のステップ**: Phase 3.1 継続（給与計算・有給休暇・CSV出力API統合）
