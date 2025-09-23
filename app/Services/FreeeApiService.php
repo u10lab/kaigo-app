@@ -134,14 +134,21 @@ class FreeeApiService
     public function clockIn(string $accessToken, int $employeeId): array
     {
         try {
+            $token = FreeeToken::first();
+            if (!$token) {
+                throw new \Exception('freee認証情報が見つかりません。');
+            }
+
             $response = $this->httpClient->post("{$this->baseUrl}/hr/api/v1/employees/{$employeeId}/time_clocks", [
                 'headers' => [
                     'Authorization' => "Bearer {$accessToken}",
                     'Content-Type' => 'application/json',
                 ],
                 'json' => [
+                    'company_id' => (int)$token->company_id,
                     'type' => 'clock_in',
-                    'datetime' => now()->toISOString(),
+                    'base_date' => now()->format('Y-m-d'),
+                    'datetime' => now()->format('Y-m-d H:i:s'),
                 ],
             ]);
 
@@ -158,14 +165,21 @@ class FreeeApiService
     public function clockOut(string $accessToken, int $employeeId): array
     {
         try {
+            $token = FreeeToken::first();
+            if (!$token) {
+                throw new \Exception('freee認証情報が見つかりません。');
+            }
+
             $response = $this->httpClient->post("{$this->baseUrl}/hr/api/v1/employees/{$employeeId}/time_clocks", [
                 'headers' => [
                     'Authorization' => "Bearer {$accessToken}",
                     'Content-Type' => 'application/json',
                 ],
                 'json' => [
+                    'company_id' => (int)$token->company_id,
                     'type' => 'clock_out',
-                    'datetime' => now()->toISOString(),
+                    'base_date' => now()->format('Y-m-d'),
+                    'datetime' => now()->format('Y-m-d H:i:s'),
                 ],
             ]);
 
@@ -232,6 +246,7 @@ class FreeeApiService
             [
                 'access_token' => $tokenData['access_token'],
                 'refresh_token' => $tokenData['refresh_token'],
+                'scope' => $tokenData['scope'] ?? '',
                 'expires_at' => now()->addSeconds($tokenData['expires_in']),
             ]
         );

@@ -105,8 +105,20 @@ class FreeeController extends Controller
             ], 400);
         }
 
+        if (!$user->employee_id) {
+            return response()->json([
+                'error' => '従業員IDが設定されていません。管理者画面で従業員IDを更新してください。',
+            ], 400);
+        }
+
         try {
             $accessToken = $token->getValidAccessToken();
+            if (!$accessToken) {
+                return response()->json([
+                    'error' => '有効なアクセストークンがありません。管理者画面でfreee認証を再実行してください。',
+                ], 400);
+            }
+
             $result = $this->freeeApiService->clockIn($accessToken, (int)$user->employee_id);
 
             return response()->json([
@@ -114,6 +126,11 @@ class FreeeController extends Controller
                 'data' => $result,
             ]);
         } catch (\Exception $e) {
+            Log::error('Freee API clock in error', [
+                'user_id' => $user->id,
+                'employee_id' => $user->employee_id,
+                'error' => $e->getMessage()
+            ]);
             return response()->json([
                 'error' => $e->getMessage(),
             ], 500);
@@ -134,8 +151,20 @@ class FreeeController extends Controller
             ], 400);
         }
 
+        if (!$user->employee_id) {
+            return response()->json([
+                'error' => '従業員IDが設定されていません。管理者画面で従業員IDを更新してください。',
+            ], 400);
+        }
+
         try {
             $accessToken = $token->getValidAccessToken();
+            if (!$accessToken) {
+                return response()->json([
+                    'error' => '有効なアクセストークンがありません。管理者画面でfreee認証を再実行してください。',
+                ], 400);
+            }
+
             $result = $this->freeeApiService->clockOut($accessToken, (int)$user->employee_id);
             
             return response()->json([
@@ -143,6 +172,11 @@ class FreeeController extends Controller
                 'data' => $result,
             ]);
         } catch (\Exception $e) {
+            Log::error('Freee API clock out error', [
+                'user_id' => $user->id,
+                'employee_id' => $user->employee_id,
+                'error' => $e->getMessage()
+            ]);
             return response()->json([
                 'error' => $e->getMessage(),
             ], 500);
