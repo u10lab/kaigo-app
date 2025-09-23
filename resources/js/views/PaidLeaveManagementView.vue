@@ -67,10 +67,10 @@
                     <div class="flex items-center">
                       <div>
                         <p class="text-sm font-medium text-text-primary">
-                          {{ employee.name }}
+                          {{ employee.user_name || employee.name }}
                         </p>
                         <p class="text-sm text-text-secondary">
-                          残り{{ employee.remaining_days }}日 / {{ employee.total_days }}日
+                          残り{{ employee.remaining_days }}日 / {{ employee.granted_days }}日
                         </p>
                       </div>
                     </div>

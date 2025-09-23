@@ -59,11 +59,12 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // 有給休暇管理API
     Route::prefix('paid-leave')->group(function () {
-        Route::get('/all', [PaidLeaveController::class, 'getAllPaidLeaveStatus']);
-        Route::get('/five-day-check', [PaidLeaveController::class, 'checkFiveDayObligation']);
-        Route::post('/use', [PaidLeaveController::class, 'usePaidLeave']);
-        Route::get('/{userId}', [PaidLeaveController::class, 'getPaidLeaveStatus']);
-        Route::put('/{userId}/grant', [PaidLeaveController::class, 'grantPaidLeave']);
+        Route::get('/status', [PaidLeaveController::class, 'getStatus']);
+        Route::get('/all-employees-status', [PaidLeaveController::class, 'getAllEmployeesStatus']);
+        Route::post('/apply', [PaidLeaveController::class, 'apply']);
+        Route::post('/approve', [PaidLeaveController::class, 'approve']);
+        Route::post('/reject', [PaidLeaveController::class, 'reject']);
+        Route::get('/annual-check', [PaidLeaveController::class, 'getAnnualLeaveCheck']);
     });
     
     // CSV出力API

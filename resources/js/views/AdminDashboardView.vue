@@ -297,6 +297,7 @@
           </div>
         </div>
       </div>
+
     </div>
   </template>
   
@@ -423,4 +424,5 @@ const handleFetchEmployees = async () => {
     isFetchingEmployees.value = false
   }
 }
+
 </script>

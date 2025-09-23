@@ -95,6 +95,12 @@
             </span>
           </div>
           <div class="flex justify-between items-center mb-4">
+            <span class="text-text-secondary">付与日数</span>
+            <span class="text-lg font-semibold text-text-primary">
+              {{ paidLeaveStatus.granted_days || 0 }}日
+            </span>
+          </div>
+          <div class="flex justify-between items-center mb-4">
             <span class="text-text-secondary">年5日取得義務</span>
             <span :class="[
               'font-bold text-lg',
@@ -102,6 +108,14 @@
             ]">
               {{ paidLeaveStatus.annual_requirement_used || 0 }}/5日
             </span>
+          </div>
+          
+          <!-- アラート表示 -->
+          <div v-if="annualAlert" class="mb-4 p-3 rounded-lg" :class="alertClass">
+            <div class="flex items-center">
+              <span class="mr-2 text-lg">{{ alertIcon }}</span>
+              <span class="text-sm font-medium">{{ annualAlert.message }}</span>
+            </div>
           </div>
           
           <router-link 
@@ -117,7 +131,7 @@
   </template>
   
   <script setup>
-  import { ref, onMounted } from 'vue'
+  import { ref, onMounted, computed } from 'vue'
   import { useRouter } from 'vue-router'
   import { useFreeeStore } from '../stores/freee'
   import { useServiceStore } from '../stores/service'
@@ -129,10 +143,69 @@
   const router = useRouter()
   const freeeStore = useFreeeStore()
   const serviceStore = useServiceStore()
-  const paidLeaveStore = usePaidLeaveStore()
   const authStore = useAuthStore()
   
   const paidLeaveStatus = ref({})
+  const annualCheck = ref(null)
+
+  // 年次取得義務アラートの計算
+  const annualAlert = computed(() => {
+    if (!annualCheck.value?.personal_status) return null
+    
+    const status = annualCheck.value.personal_status
+    const usedDays = status.used_days
+    const requiredDays = status.required_days
+    const remainingDays = status.remaining_days_in_year
+    
+    if (usedDays >= requiredDays) {
+      return null // 達成済みの場合はアラートなし
+    }
+    
+    const neededDays = requiredDays - usedDays
+    
+    if (remainingDays < 30 && neededDays > 0) {
+      return {
+        level: 'high',
+        message: `年度末まで残り${remainingDays}日！あと${neededDays}日の取得が必要です。`,
+        icon: '⚠️'
+      }
+    } else if (remainingDays < 90 && neededDays > 0) {
+      return {
+        level: 'medium',
+        message: `あと${neededDays}日の取得が必要です。`,
+        icon: '📅'
+      }
+    } else if (neededDays > 0) {
+      return {
+        level: 'low',
+        message: `年5日取得義務: あと${neededDays}日取得してください。`,
+        icon: '💡'
+      }
+    }
+    
+    return null
+  })
+
+  // アラートのスタイルクラス
+  const alertClass = computed(() => {
+    if (!annualAlert.value) return ''
+    
+    switch (annualAlert.value.level) {
+      case 'high':
+        return 'bg-red-50 border border-red-200 text-red-800'
+      case 'medium':
+        return 'bg-yellow-50 border border-yellow-200 text-yellow-800'
+      case 'low':
+        return 'bg-blue-50 border border-blue-200 text-blue-800'
+      default:
+        return ''
+    }
+  })
+
+  // アラートアイコン
+  const alertIcon = computed(() => {
+    return annualAlert.value?.icon || '💡'
+  })
   
   const handleClockIn = async () => {
     try {
@@ -186,15 +259,21 @@
       console.error('Helper: Failed to check freee auth status:', error)
     }
 
-    // 有給休暇ステータスを読み込み
+    // 有給休暇ステータスを読み込み（API接続テスト用）
     try {
       const userId = authStore.user?.id
       if (userId) {
+        // APIから実際のデータを取得（エラー時は例外をスロー）
+        const paidLeaveStore = usePaidLeaveStore()
         const status = await paidLeaveStore.fetchPaidLeaveStatus(userId)
         paidLeaveStatus.value = status
+        
+        const checkResult = await paidLeaveStore.fetchAnnualLeaveCheck()
+        annualCheck.value = checkResult
       }
     } catch (error) {
       console.error('Failed to load paid leave status:', error)
+      // エラーはコンソールで確認、UIには表示しない
     }
   })
   </script>
