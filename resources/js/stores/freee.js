@@ -109,6 +109,31 @@ export const useFreeeStore = defineStore('freee', () => {
     }
   }
 
+  // 従業員ID更新
+  const updateEmployeeIds = async () => {
+    try {
+      console.log('Attempting to update employee IDs...')
+      const response = await api.post('/freee/update-employee-ids')
+      console.log('Employee ID update successful:', response.data)
+      return response.data
+    } catch (error) {
+      console.error('Failed to update employee IDs:', error)
+      console.error('Error response:', error.response?.data)
+      throw error
+    }
+  }
+
+  // 従業員一覧取得
+  const fetchEmployees = async () => {
+    try {
+      const response = await api.get('/freee/employees')
+      return response.data
+    } catch (error) {
+      console.error('Failed to fetch employees:', error)
+      throw error
+    }
+  }
+
   return {
     isAuthenticated,
     workStatus,
@@ -119,6 +144,8 @@ export const useFreeeStore = defineStore('freee', () => {
     clockIn,
     clockOut,
     fetchWorkRecords,
-    fetchPayrollData
+    fetchPayrollData,
+    updateEmployeeIds,
+    fetchEmployees
   }
 })

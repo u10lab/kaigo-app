@@ -198,7 +198,8 @@
               </h2>
             </div>
             <div class="p-8">
-              <div class="flex items-center justify-between">
+              <!-- 認証ステータス -->
+              <div class="flex items-center justify-between mb-6">
                 <div>
                   <h3 class="text-lg font-semibold text-text-primary">認証ステータス</h3>
                   <p :class="[
@@ -219,6 +220,79 @@
                   連携中
                 </span>
               </div>
+
+              <!-- 従業員ID管理 -->
+              <div v-if="freeeAuthenticated" class="border-t border-gray-200 pt-6">
+                <div class="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 class="text-lg font-semibold text-text-primary">従業員ID管理</h3>
+                    <p class="text-sm font-medium text-text-secondary">
+                      freee APIから従業員IDを取得して更新
+                    </p>
+                  </div>
+                  <div class="flex gap-3">
+                    <button
+                      @click="handleUpdateEmployeeIds"
+                      :disabled="isUpdatingEmployees"
+                      class="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {{ isUpdatingEmployees ? '更新中...' : '従業員ID更新' }}
+                    </button>
+                    <button
+                      @click="handleFetchEmployees"
+                      :disabled="isFetchingEmployees"
+                      class="px-6 py-3 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-xl hover:from-indigo-600 hover:to-blue-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {{ isFetchingEmployees ? '取得中...' : '従業員一覧' }}
+                    </button>
+                  </div>
+                </div>
+                
+                <!-- 更新結果表示 -->
+                <div v-if="employeeUpdateResult" class="p-4 rounded-lg" :class="employeeUpdateResult.type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'">
+                  <h4 class="font-semibold" :class="employeeUpdateResult.type === 'success' ? 'text-green-800' : 'text-red-800'">
+                    {{ employeeUpdateResult.title }}
+                  </h4>
+                  <p class="text-sm mt-1" :class="employeeUpdateResult.type === 'success' ? 'text-green-700' : 'text-red-700'">
+                    {{ employeeUpdateResult.message }}
+                  </p>
+                  <!-- 従業員一覧表示 -->
+                  <div v-if="employeeUpdateResult.employees && employeeUpdateResult.employees.length > 0" class="mt-4">
+                    <h5 class="text-sm font-medium text-blue-700 mb-2">freee API従業員一覧:</h5>
+                    <div class="max-h-60 overflow-y-auto">
+                      <table class="min-w-full text-xs">
+                        <thead class="bg-gray-50">
+                          <tr>
+                            <th class="px-2 py-1 text-left text-gray-600">ID</th>
+                            <th class="px-2 py-1 text-left text-gray-600">従業員番号</th>
+                            <th class="px-2 py-1 text-left text-gray-600">名前</th>
+                            <th class="px-2 py-1 text-left text-gray-600">入社日</th>
+                          </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                          <tr v-for="emp in employeeUpdateResult.employees" :key="emp.id" class="hover:bg-gray-50">
+                            <td class="px-2 py-1 text-gray-900">{{ emp.id }}</td>
+                            <td class="px-2 py-1 text-gray-900">{{ emp.num }}</td>
+                            <td class="px-2 py-1 text-gray-900">{{ emp.display_name }}</td>
+                            <td class="px-2 py-1 text-gray-900">{{ emp.entry_date }}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  
+                  <!-- マッチングできなかった従業員 -->
+                  <div v-if="employeeUpdateResult.notMatched && employeeUpdateResult.notMatched.length > 0" class="mt-2">
+                    <p class="text-sm font-medium text-orange-700">マッチングできなかった従業員:</p>
+                    <ul class="text-sm text-orange-600 mt-1">
+                      <li v-for="emp in employeeUpdateResult.notMatched" :key="emp.freee_id" class="flex justify-between">
+                        <span>{{ emp.display_name }} ({{ emp.num }})</span>
+                        <span class="text-gray-500">ID: {{ emp.freee_id }}</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -235,6 +309,11 @@ const freeeStore = useFreeeStore()
 
 const freeeAuthenticated = ref(false)
 const freeeAuthMessage = ref(null)
+
+// 従業員ID更新関連
+const isUpdatingEmployees = ref(false)
+const isFetchingEmployees = ref(false)
+const employeeUpdateResult = ref(null)
 
 // URLパラメータから認証結果を確認
 onMounted(() => {
@@ -275,6 +354,59 @@ const handleFreeeAuth = async () => {
       type: 'error',
       text: '認証URL取得に失敗しました。'
     }
+  }
+}
+
+// 従業員ID更新
+const handleUpdateEmployeeIds = async () => {
+  isUpdatingEmployees.value = true
+  employeeUpdateResult.value = null
+  
+  try {
+    const result = await freeeStore.updateEmployeeIds()
+    
+    employeeUpdateResult.value = {
+      type: 'success',
+      title: '従業員ID更新完了',
+      message: `${result.updated_count}名の従業員IDを更新しました。（全${result.total_employees}名中）`,
+      notMatched: result.not_matched_employees || []
+    }
+  } catch (error) {
+    console.error('Failed to update employee IDs:', error)
+    employeeUpdateResult.value = {
+      type: 'error',
+      title: '従業員ID更新エラー',
+      message: error.response?.data?.error || '従業員IDの更新に失敗しました。'
+    }
+  } finally {
+    isUpdatingEmployees.value = false
+  }
+}
+
+// 従業員一覧取得
+const handleFetchEmployees = async () => {
+  isFetchingEmployees.value = true
+  employeeUpdateResult.value = null
+  
+  try {
+    const result = await freeeStore.fetchEmployees()
+    console.log('Employees data:', result)
+    
+    employeeUpdateResult.value = {
+      type: 'success',
+      title: '従業員一覧取得完了',
+      message: `${result.data.employees?.length || 0}名の従業員データを取得しました。`,
+      employees: result.data.employees || []
+    }
+  } catch (error) {
+    console.error('Failed to fetch employees:', error)
+    employeeUpdateResult.value = {
+      type: 'error',
+      title: '従業員一覧取得エラー',
+      message: error.response?.data?.error || '従業員一覧の取得に失敗しました。'
+    }
+  } finally {
+    isFetchingEmployees.value = false
   }
 }
 </script>

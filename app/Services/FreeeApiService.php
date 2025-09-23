@@ -238,12 +238,17 @@ class FreeeApiService
     }
 
     /**
-     * 従業員一覧を取得
+     * 従業員一覧を取得（company_id指定）
      */
-    public function getEmployees(string $accessToken): array
+    public function getEmployees(string $accessToken, string $companyId): array
     {
         try {
-            $response = $this->httpClient->get("{$this->baseUrl}/hr/api/v1/employees", [
+            Log::info('Fetching employees from freee API', [
+                'company_id' => $companyId,
+                'endpoint' => "{$this->baseUrl}/hr/api/v1/companies/{$companyId}/employees"
+            ]);
+
+            $response = $this->httpClient->get("{$this->baseUrl}/hr/api/v1/companies/{$companyId}/employees", [
                 'headers' => [
                     'Authorization' => "Bearer {$accessToken}",
                 ],
@@ -252,9 +257,29 @@ class FreeeApiService
                 ],
             ]);
 
-            return json_decode($response->getBody()->getContents(), true);
+            $responseBody = $response->getBody()->getContents();
+            $data = json_decode($responseBody, true);
+            
+            // レスポンスが配列形式の場合は、employeesキーでラップ
+            if (is_array($data) && isset($data[0])) {
+                $data = ['employees' => $data];
+            }
+            
+            Log::info('Freee employees API response', [
+                'status_code' => $response->getStatusCode(),
+                'response_body' => $responseBody,
+                'employees_count' => count($data['employees'] ?? []),
+                'is_array_response' => is_array($data) && isset($data[0])
+            ]);
+
+            return $data;
         } catch (GuzzleException $e) {
             Log::error('Freee API employees error: ' . $e->getMessage());
+            Log::error('Freee API employees error details', [
+                'error' => $e->getMessage(),
+                'code' => $e->getCode(),
+                'response' => $e->getResponse() ? $e->getResponse()->getBody()->getContents() : null
+            ]);
             throw new \Exception('従業員一覧の取得に失敗しました。');
         }
     }
