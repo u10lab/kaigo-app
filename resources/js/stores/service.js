@@ -75,12 +75,29 @@ export const useServiceStore = defineStore('service', () => {
     }
   }
 
+  const fetchCurrentServiceStatus = async () => {
+    try {
+      const response = await api.get('/service/current-status')
+      if (response.data.success && response.data.data) {
+        currentService.value = response.data.data
+        return response.data.data
+      }
+      return null
+    } catch (error) {
+      console.error('Fetch current service status failed:', error)
+      return null
+    }
+  }
+
   const startService = async (clientId, serviceTypeId) => {
     try {
-      const response = await api.post('/service/start', {
-        client_id: clientId,
-        service_type_id: serviceTypeId
-      })
+      const requestData = {
+        client_id: parseInt(clientId),
+        service_type_id: parseInt(serviceTypeId)
+      }
+      console.log('Service start request data:', requestData)
+      
+      const response = await api.post('/service/start', requestData)
       
       if (response.data.success) {
         // API成功時: サーバーから返されたデータを使用
@@ -98,13 +115,20 @@ export const useServiceStore = defineStore('service', () => {
       return response.data
     } catch (error) {
       console.error('Start service failed:', error)
+      console.error('Error response:', error.response?.data)
+      console.error('Error status:', error.response?.status)
+      
+      // 既存の未終了サービスがある場合のエラーハンドリング
+      if (error.response?.status === 400 && error.response?.data?.message?.includes('既にサービスが開始されています')) {
+        throw new Error('既にサービスが開始されています。先にサービスを終了してください。')
+      }
       
       // API失敗時: ローカルでサービス記録を作成
       const client = clients.value.find(c => c.id === clientId)
       const serviceType = serviceTypes.value.find(st => st.id === serviceTypeId)
       
       currentService.value = {
-        id: Date.now(),
+        id: 'local_' + Date.now(), // ローカル用のID
         client_id: clientId,
         service_type_id: serviceTypeId,
         client_name: client?.name || 'Unknown',
@@ -123,7 +147,14 @@ export const useServiceStore = defineStore('service', () => {
       
       // APIコールを試行
       try {
-        const response = await api.post(`/service/${currentService.value.id}/end`)
+        // ローカルIDの場合はAPIコールをスキップ
+        if (currentService.value.id.toString().startsWith('local_')) {
+          throw new Error('Local service, skip API call')
+        }
+        
+        // データベースのIDを使用（APIから返されたID）
+        const serviceId = currentService.value.id
+        const response = await api.post(`/service/${serviceId}/end`)
         
         if (response.data.success) {
           // API成功時: サーバーから返されたデータを使用
@@ -188,6 +219,7 @@ export const useServiceStore = defineStore('service', () => {
     fetchClients,
     fetchServiceTypes,
     fetchServiceRecords,
+    fetchCurrentServiceStatus,
     startService,
     endService
   }

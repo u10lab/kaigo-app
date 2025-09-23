@@ -19,11 +19,15 @@ class ServiceController extends Controller
     public function start(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'client_id' => 'required|exists:clients,id',
-            'service_type_id' => 'required|exists:service_types,id',
+            'client_id' => 'required|integer|exists:clients,id',
+            'service_type_id' => 'required|integer|exists:service_types,id',
         ]);
 
         if ($validator->fails()) {
+            \Log::error('Service start validation failed', [
+                'request_data' => $request->all(),
+                'errors' => $validator->errors()
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'バリデーションエラー',
