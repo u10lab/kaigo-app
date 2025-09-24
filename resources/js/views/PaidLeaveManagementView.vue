@@ -11,6 +11,24 @@
             </span>
           </h1>
   
+          <!-- Action Buttons -->
+          <div class="flex justify-center space-x-4 mb-8">
+            <button
+              @click="goToApproval"
+              class="px-6 py-3 bg-primary-blue text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-primary-blue transition-colors duration-200"
+            >
+              申請承認画面へ
+            </button>
+            <button
+              @click="syncWithFreee"
+              :disabled="loading"
+              class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span v-if="loading">同期中...</span>
+              <span v-else>freeeと同期</span>
+            </button>
+          </div>
+
           <!-- Summary Stats -->
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div class="card-enhanced overflow-hidden rounded-2xl hover:scale-105 transition-transform duration-300">
@@ -160,6 +178,21 @@
   
   const viewEmployeeDetail = (userId) => {
     router.push(`/admin/paid-leave/${userId}`)
+  }
+
+  const goToApproval = () => {
+    router.push('/admin/paid-leave-approval')
+  }
+
+  const syncWithFreee = async () => {
+    try {
+      const result = await paidLeaveStore.syncEmployeesFromFreee()
+      alert(`freeeとの同期が完了しました。\n同期件数: ${result.synced_count}/${result.total_employees}`)
+      await loadEmployeeLeaveStatus()
+    } catch (error) {
+      console.error('Freee sync failed:', error)
+      alert('freeeとの同期に失敗しました。')
+    }
   }
   
   onMounted(() => {

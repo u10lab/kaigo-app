@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\PaidLeaveApplication;
 use App\Services\PaidLeaveService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 
 class PaidLeaveController extends Controller
 {
@@ -65,7 +67,6 @@ class PaidLeaveController extends Controller
             'start_date' => 'required|date|after_or_equal:today',
             'end_date' => 'required|date|after_or_equal:start_date',
             'reason' => 'required|string|max:500',
-            'leave_type' => 'required|in:paid_leave,special_leave',
         ]);
 
         try {
@@ -87,21 +88,27 @@ class PaidLeaveController extends Controller
                 ], 400);
             }
 
-            // TODO: 申請データをデータベースに保存
-            // 現在は仮のレスポンスを返す
-            $application = [
-                'id' => time(), // 仮のID
+            // 期間の重複チェック
+            if (PaidLeaveApplication::hasOverlap($userId, $request->start_date, $request->end_date)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => '指定された期間に既に承認済みの有給休暇があります。',
+                ], 400);
+            }
+
+            // 申請データをデータベースに保存
+            $application = PaidLeaveApplication::create([
                 'user_id' => $userId,
                 'start_date' => $request->start_date,
                 'end_date' => $request->end_date,
                 'requested_days' => $requestedDays,
                 'reason' => $request->reason,
-                'leave_type' => $request->leave_type,
+                'leave_type' => 'paid_leave',
                 'status' => 'pending',
-                'created_at' => now(),
-            ];
+            ]);
 
             Log::info('Paid leave application submitted', [
+                'application_id' => $application->id,
                 'user_id' => $userId,
                 'requested_days' => $requestedDays,
                 'start_date' => $request->start_date,
@@ -111,7 +118,7 @@ class PaidLeaveController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => '有給休暇申請が完了しました。',
-                'data' => $application
+                'data' => $application->load('user')
             ]);
 
         } catch (\Exception $e) {
@@ -147,11 +154,32 @@ class PaidLeaveController extends Controller
         ]);
 
         try {
-            // TODO: 申請承認ロジックを実装
-            // 現在は仮のレスポンスを返す
+            $application = PaidLeaveApplication::findOrFail($request->application_id);
+            
+            if ($application->status !== 'pending') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'この申請は既に処理済みです。'
+                ], 400);
+            }
+
+            // 申請を承認
+            $application->update([
+                'status' => 'approved',
+                'approver_id' => Auth::id(),
+                'approver_comment' => $request->approver_comment,
+                'approved_at' => now(),
+            ]);
+
+            // 有給休暇レコードを更新
+            $this->paidLeaveService->updatePaidLeaveRecordAfterApproval($application->user_id, $application->requested_days);
+            
+            // freee勤怠APIに有給休暇を登録
+            $this->paidLeaveService->registerPaidLeaveToFreee($application);
             
             Log::info('Paid leave application approved', [
-                'application_id' => $request->application_id,
+                'application_id' => $application->id,
+                'user_id' => $application->user_id,
                 'approver_id' => Auth::id(),
                 'comment' => $request->approver_comment
             ]);
@@ -159,12 +187,7 @@ class PaidLeaveController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => '有給休暇申請を承認しました。',
-                'data' => [
-                    'application_id' => $request->application_id,
-                    'status' => 'approved',
-                    'approved_at' => now(),
-                    'approver_id' => Auth::id()
-                ]
+                'data' => $application->load(['user', 'approver'])
             ]);
 
         } catch (\Exception $e) {
@@ -201,11 +224,26 @@ class PaidLeaveController extends Controller
         ]);
 
         try {
-            // TODO: 申請却下ロジックを実装
-            // 現在は仮のレスポンスを返す
+            $application = PaidLeaveApplication::findOrFail($request->application_id);
+            
+            if ($application->status !== 'pending') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'この申請は既に処理済みです。'
+                ], 400);
+            }
+
+            // 申請を却下
+            $application->update([
+                'status' => 'rejected',
+                'approver_id' => Auth::id(),
+                'rejection_reason' => $request->rejection_reason,
+                'rejected_at' => now(),
+            ]);
             
             Log::info('Paid leave application rejected', [
-                'application_id' => $request->application_id,
+                'application_id' => $application->id,
+                'user_id' => $application->user_id,
                 'rejector_id' => Auth::id(),
                 'rejection_reason' => $request->rejection_reason
             ]);
@@ -213,13 +251,7 @@ class PaidLeaveController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => '有給休暇申請を却下しました。',
-                'data' => [
-                    'application_id' => $request->application_id,
-                    'status' => 'rejected',
-                    'rejected_at' => now(),
-                    'rejector_id' => Auth::id(),
-                    'rejection_reason' => $request->rejection_reason
-                ]
+                'data' => $application->load(['user', 'approver'])
             ]);
 
         } catch (\Exception $e) {
@@ -317,6 +349,106 @@ class PaidLeaveController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => '全従業員の有給休暇状況の取得に失敗しました。',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * 申請一覧を取得
+     */
+    public function getApplications(Request $request)
+    {
+        try {
+            $query = PaidLeaveApplication::with(['user', 'approver'])
+                ->orderBy('created_at', 'desc');
+
+            // 管理者以外は自分の申請のみ
+            if (Auth::user()->role !== 'admin') {
+                $query->where('user_id', Auth::id());
+            }
+
+            // ステータスフィルタ
+            if ($request->has('status')) {
+                $query->where('status', $request->status);
+            }
+
+            // ユーザーフィルタ（管理者のみ）
+            if (Auth::user()->role === 'admin' && $request->has('user_id')) {
+                $query->where('user_id', $request->user_id);
+            }
+
+            $applications = $query->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $applications
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Get applications error', [
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => '申請一覧の取得に失敗しました。',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * freeeから従業員マスタを同期
+     */
+    public function syncEmployeesFromFreee(Request $request)
+    {
+        try {
+            $result = $this->paidLeaveService->syncEmployeesFromFreee();
+            
+            return response()->json([
+                'success' => true,
+                'message' => '従業員マスタの同期が完了しました。',
+                'data' => $result
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Sync employees from freee failed', [
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => '従業員マスタの同期に失敗しました。',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * 正確な残日数を取得（freee実績を含む）
+     */
+    public function getAccurateRemainingDays(Request $request)
+    {
+        $userId = $request->input('user_id', Auth::id());
+        $fiscalYear = $request->input('fiscal_year', date('Y'));
+
+        try {
+            $result = $this->paidLeaveService->getAccurateRemainingDays($userId, $fiscalYear);
+            
+            return response()->json([
+                'success' => true,
+                'data' => $result
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Get accurate remaining days failed', [
+                'user_id' => $userId,
+                'fiscal_year' => $fiscalYear,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => '残日数の取得に失敗しました。',
                 'error' => $e->getMessage()
             ], 500);
         }

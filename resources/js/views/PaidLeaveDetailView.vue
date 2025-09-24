@@ -30,7 +30,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                   <div class="text-center">
                     <div class="text-2xl font-bold text-text-primary">
-                      {{ paidLeaveStatus.total_days || 10 }}
+                      {{ paidLeaveStatus.granted_days || 10 }}
                     </div>
                     <div class="text-sm text-text-secondary">年間付与日数</div>
                   </div>
@@ -148,13 +148,11 @@
   import { ref, onMounted } from 'vue'
   import { useRoute, useRouter } from 'vue-router'
   import { usePaidLeaveStore } from '../stores/paidLeave'
-  import { usePayrollStore } from '../stores/payroll'
   import Navigation from '../components/Navigation.vue'
   
   const route = useRoute()
   const router = useRouter()
   const paidLeaveStore = usePaidLeaveStore()
-  const payrollStore = usePayrollStore()
   
   const userId = route.params.userId
   
@@ -187,9 +185,10 @@
       const status = await paidLeaveStore.fetchPaidLeaveStatus(userId)
       paidLeaveStatus.value = status
       
-      // 給与ストアから従業員名を取得
-      const employee = payrollStore.employees.find(emp => emp.id == userId)
-      employeeName.value = employee?.name || 'Unknown'
+      // 有給休暇ストアから従業員名を取得
+      const allEmployees = await paidLeaveStore.fetchAllEmployeesLeaveStatus()
+      const employee = allEmployees.find(emp => emp.user_id == userId)
+      employeeName.value = employee?.user_name || 'Unknown'
     } catch (error) {
       console.error('Failed to load paid leave detail:', error)
     }

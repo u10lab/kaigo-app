@@ -304,9 +304,11 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useFreeeStore } from '../stores/freee'
+import { usePaidLeaveStore } from '../stores/paidLeave'
 import Navigation from '../components/Navigation.vue'
 
 const freeeStore = useFreeeStore()
+const paidLeaveStore = usePaidLeaveStore()
 
 const freeeAuthenticated = ref(false)
 const freeeAuthMessage = ref(null)
@@ -424,5 +426,6 @@ const handleFetchEmployees = async () => {
     isFetchingEmployees.value = false
   }
 }
+
 
 </script>

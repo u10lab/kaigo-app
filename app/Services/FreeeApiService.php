@@ -25,6 +25,7 @@ class FreeeApiService
 
     /**
      * OAuth認証URLを生成（freee API3仕様準拠）
+     * 有給申請API用に必要なスコープを追加
      */
     public function getAuthorizationUrl(): string
     {
@@ -35,7 +36,8 @@ class FreeeApiService
             'client_id' => $this->clientId,
             'redirect_uri' => $this->redirectUri,
             'state' => $state,
-            'prompt' => 'select_company'
+            'prompt' => 'select_company',
+            'scope' => 'read write hr' // 有給申請API用スコープ
         ]);
 
         // freee API3の正しい認証エンドポイント
@@ -312,6 +314,269 @@ class FreeeApiService
                 'refresh_token' => $tokenData['refresh_token'],
                 'expires_at' => now()->addSeconds($tokenData['expires_in']),
             ]);
+        }
+    }
+
+    /**
+     * 従業員マスタ情報を取得（有給休暇管理用）
+     */
+    public function getEmployeesForPaidLeave(string $accessToken): array
+    {
+        $token = FreeeToken::first();
+        if (!$token) {
+            throw new \Exception('freee認証情報が見つかりません。');
+        }
+        
+        return $this->getEmployees($accessToken, $token->company_id);
+    }
+
+    /**
+     * 従業員の勤怠記録を取得（有給休暇実績確認用）
+     */
+    public function getWorkRecordsForPaidLeave(string $accessToken, int $employeeId, string $year): array
+    {
+        try {
+            $response = $this->httpClient->get("{$this->baseUrl}/hr/api/v1/employees/{$employeeId}/work_records", [
+                'headers' => [
+                    'Authorization' => "Bearer {$accessToken}",
+                ],
+                'query' => [
+                    'year' => $year,
+                ],
+            ]);
+
+            return json_decode($response->getBody()->getContents(), true);
+        } catch (GuzzleException $e) {
+            Log::error('Freee API work records for paid leave error: ' . $e->getMessage());
+            throw new \Exception('勤怠記録の取得に失敗しました。');
+        }
+    }
+
+    /**
+     * 有給休暇をfreeeに登録
+     */
+    public function registerPaidLeave(string $accessToken, int $employeeId, string $date): array
+    {
+        try {
+            $token = FreeeToken::first();
+            if (!$token) {
+                throw new \Exception('freee認証情報が見つかりません。');
+            }
+
+            $response = $this->httpClient->put("{$this->baseUrl}/hr/api/v1/employees/{$employeeId}/work_records/{$date}", [
+                'headers' => [
+                    'Authorization' => "Bearer {$accessToken}",
+                    'Content-Type' => 'application/json',
+                ],
+                'json' => [
+                    'company_id' => (int)$token->company_id,
+                    'work_record' => [
+                        'date' => $date,
+                        'absence_reason' => 'PAID_HOLIDAY',
+                        'is_absence' => true,
+                    ],
+                ],
+            ]);
+
+            return json_decode($response->getBody()->getContents(), true);
+        } catch (GuzzleException $e) {
+            Log::error('Freee API paid leave registration error: ' . $e->getMessage());
+            throw new \Exception('有給休暇の登録に失敗しました。');
+        }
+    }
+
+    /**
+     * 従業員の勤怠記録サマリーを取得（有給休暇残日数確認用）
+     */
+    public function getWorkRecordsSummary(string $accessToken, int $employeeId, string $year): array
+    {
+        try {
+            $response = $this->httpClient->get("{$this->baseUrl}/hr/api/v1/employees/{$employeeId}/work_records/summary", [
+                'headers' => [
+                    'Authorization' => "Bearer {$accessToken}",
+                ],
+                'query' => [
+                    'year' => $year,
+                ],
+            ]);
+
+            return json_decode($response->getBody()->getContents(), true);
+        } catch (GuzzleException $e) {
+            Log::error('Freee API work records summary error: ' . $e->getMessage());
+            throw new \Exception('勤怠記録サマリーの取得に失敗しました。');
+        }
+    }
+
+    /**
+     * 有給休暇申請一覧を取得
+     */
+    public function getPaidHolidayApplications(string $accessToken, array $params = []): array
+    {
+        try {
+            $token = FreeeToken::first();
+            if (!$token) {
+                throw new \Exception('freee認証情報が見つかりません。');
+            }
+
+            $queryParams = array_merge([
+                'company_id' => $token->company_id,
+            ], $params);
+
+            $response = $this->httpClient->get("{$this->baseUrl}/hr/api/v1/approval_requests/paid_holidays", [
+                'headers' => [
+                    'Authorization' => "Bearer {$accessToken}",
+                ],
+                'query' => $queryParams,
+            ]);
+
+            return json_decode($response->getBody()->getContents(), true);
+        } catch (GuzzleException $e) {
+            Log::error('Freee API get paid holiday applications error: ' . $e->getMessage());
+            throw new \Exception('有給休暇申請一覧の取得に失敗しました。');
+        }
+    }
+
+    /**
+     * 有給休暇申請を作成
+     */
+    public function createPaidHolidayApplication(string $accessToken, int $employeeId, array $applicationData): array
+    {
+        try {
+            $token = FreeeToken::first();
+            if (!$token) {
+                throw new \Exception('freee認証情報が見つかりません。');
+            }
+
+            $response = $this->httpClient->post("{$this->baseUrl}/hr/api/v1/approval_requests/paid_holidays", [
+                'headers' => [
+                    'Authorization' => "Bearer {$accessToken}",
+                    'Content-Type' => 'application/json',
+                ],
+                'json' => [
+                    'company_id' => (int)$token->company_id,
+                    'employee_id' => $employeeId,
+                    'paid_holiday_application' => $applicationData,
+                ],
+            ]);
+
+            return json_decode($response->getBody()->getContents(), true);
+        } catch (GuzzleException $e) {
+            Log::error('Freee API create paid holiday application error: ' . $e->getMessage());
+            throw new \Exception('有給休暇申請の作成に失敗しました。');
+        }
+    }
+
+    /**
+     * 有給休暇申請を承認・却下
+     */
+    public function actionPaidHolidayApplication(string $accessToken, int $applicationId, string $action, array $params = []): array
+    {
+        try {
+            $token = FreeeToken::first();
+            if (!$token) {
+                throw new \Exception('freee認証情報が見つかりません。');
+            }
+
+            $response = $this->httpClient->post("{$this->baseUrl}/hr/api/v1/approval_requests/paid_holidays/{$applicationId}/actions", [
+                'headers' => [
+                    'Authorization' => "Bearer {$accessToken}",
+                    'Content-Type' => 'application/json',
+                ],
+                'json' => [
+                    'company_id' => (int)$token->company_id,
+                    'action' => $action,
+                    'paid_holiday_application' => $params,
+                ],
+            ]);
+
+            return json_decode($response->getBody()->getContents(), true);
+        } catch (GuzzleException $e) {
+            Log::error('Freee API action paid holiday application error: ' . $e->getMessage());
+            throw new \Exception('有給休暇申請の処理に失敗しました。');
+        }
+    }
+
+    /**
+     * 有給休暇申請を更新
+     */
+    public function updatePaidHolidayApplication(string $accessToken, int $applicationId, array $applicationData): array
+    {
+        try {
+            $token = FreeeToken::first();
+            if (!$token) {
+                throw new \Exception('freee認証情報が見つかりません。');
+            }
+
+            $response = $this->httpClient->put("{$this->baseUrl}/hr/api/v1/approval_requests/paid_holidays/{$applicationId}", [
+                'headers' => [
+                    'Authorization' => "Bearer {$accessToken}",
+                    'Content-Type' => 'application/json',
+                ],
+                'json' => [
+                    'company_id' => (int)$token->company_id,
+                    'paid_holiday_application' => $applicationData,
+                ],
+            ]);
+
+            return json_decode($response->getBody()->getContents(), true);
+        } catch (GuzzleException $e) {
+            Log::error('Freee API update paid holiday application error: ' . $e->getMessage());
+            throw new \Exception('有給休暇申請の更新に失敗しました。');
+        }
+    }
+
+    /**
+     * 有給休暇申請を削除
+     */
+    public function deletePaidHolidayApplication(string $accessToken, int $applicationId): array
+    {
+        try {
+            $token = FreeeToken::first();
+            if (!$token) {
+                throw new \Exception('freee認証情報が見つかりません。');
+            }
+
+            $response = $this->httpClient->delete("{$this->baseUrl}/hr/api/v1/approval_requests/paid_holidays/{$applicationId}", [
+                'headers' => [
+                    'Authorization' => "Bearer {$accessToken}",
+                ],
+                'query' => [
+                    'company_id' => $token->company_id,
+                ],
+            ]);
+
+            return json_decode($response->getBody()->getContents(), true);
+        } catch (GuzzleException $e) {
+            Log::error('Freee API delete paid holiday application error: ' . $e->getMessage());
+            throw new \Exception('有給休暇申請の削除に失敗しました。');
+        }
+    }
+
+    /**
+     * 有給休暇を勤怠記録に登録
+     */
+    public function registerPaidLeaveToAttendance(string $accessToken, int $employeeId, string $date): array
+    {
+        try {
+            $response = $this->httpClient->post("{$this->baseUrl}/hr/api/v1/employees/{$employeeId}/work_records", [
+                'headers' => [
+                    'Authorization' => "Bearer {$accessToken}",
+                    'Content-Type' => 'application/json',
+                ],
+                'json' => [
+                    'date' => $date,
+                    'work_type' => 'paid_leave',
+                    'start_time' => '09:00',
+                    'end_time' => '18:00',
+                    'break_time' => 60, // 1時間休憩
+                    'note' => '有給休暇取得'
+                ],
+            ]);
+
+            return json_decode($response->getBody()->getContents(), true);
+        } catch (GuzzleException $e) {
+            Log::error('Freee API register paid leave to attendance error: ' . $e->getMessage());
+            throw new \Exception('有給休暇の勤怠登録に失敗しました。');
         }
     }
 }

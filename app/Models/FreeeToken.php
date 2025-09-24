@@ -31,9 +31,9 @@ class FreeeToken extends Model
     /**
      * アクセストークンを取得（期限切れの場合は自動更新）
      */
-    public function getValidAccessToken(): string
+    public function getValidAccessToken(): ?string
     {
-        if ($this->isExpired()) {
+        if ($this->isExpired() && $this->refresh_token) {
             $this->refreshAccessToken();
         }
         
@@ -45,7 +45,17 @@ class FreeeToken extends Model
      */
     public function refreshAccessToken(): void
     {
-        // リフレッシュトークンを使用して新しいアクセストークンを取得
-        // 実装は後でFreeeApiServiceで行う
+        if (!$this->refresh_token) {
+            throw new \Exception('リフレッシュトークンがありません。');
+        }
+
+        $freeeApiService = app(\App\Services\FreeeApiService::class);
+        $newTokenData = $freeeApiService->refreshAccessToken($this->refresh_token);
+        
+        $this->update([
+            'access_token' => $newTokenData['access_token'],
+            'refresh_token' => $newTokenData['refresh_token'],
+            'expires_at' => now()->addSeconds($newTokenData['expires_in']),
+        ]);
     }
 }

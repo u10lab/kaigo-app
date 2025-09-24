@@ -65,6 +65,31 @@ export const usePaidLeaveStore = defineStore('paidLeave', () => {
   }
 
   /**
+   * 申請一覧を取得
+   */
+  const fetchApplications = async (filters = {}) => {
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await api.get('/paid-leave/applications', { params: filters })
+      
+      if (response.data.success) {
+        applications.value = response.data.data
+        return response.data.data
+      } else {
+        throw new Error(response.data.message || '申請一覧の取得に失敗しました')
+      }
+    } catch (err) {
+      console.error('Fetch applications failed:', err)
+      error.value = err.message || '申請一覧の取得に失敗しました'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
    * 有給休暇申請を承認
    */
   const approveApplication = async (applicationId, comment = null) => {
@@ -171,6 +196,222 @@ export const usePaidLeaveStore = defineStore('paidLeave', () => {
   }
 
   /**
+   * freeeから従業員マスタを同期
+   */
+  const syncEmployeesFromFreee = async () => {
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await api.post('/paid-leave/sync-employees-from-freee')
+      
+      if (response.data.success) {
+        return response.data.data
+      } else {
+        throw new Error(response.data.message || 'freeeからの従業員マスタ同期に失敗しました')
+      }
+    } catch (err) {
+      console.error('Sync employees from freee failed:', err)
+      const errorMessage = err.response?.data?.message || err.message || 'freeeからの従業員マスタ同期に失敗しました'
+      error.value = errorMessage
+      
+      // アクセストークン期限切れの場合は特別なメッセージを表示
+      if (errorMessage.includes('アクセストークン') || errorMessage.includes('認証')) {
+        error.value = 'freee APIの認証が期限切れです。管理者画面でfreee認証を再実行してください。'
+      }
+      
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * 有給休暇申請を承認してfreeeに登録
+   */
+  const approveAndRegisterToFreee = async (userId, date) => {
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await api.post('/paid-leave/approve-and-register-to-freee', {
+        user_id: userId,
+        date: date
+      })
+      
+      if (response.data.success) {
+        return response.data.data
+      } else {
+        throw new Error(response.data.message || 'freeeへの登録に失敗しました')
+      }
+    } catch (err) {
+      console.error('Approve and register to freee failed:', err)
+      error.value = err.message || 'freeeへの登録に失敗しました'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * 正確な残日数を取得（freee実績を含む）
+   */
+  const fetchAccurateRemainingDays = async (userId = null, fiscalYear = null) => {
+    loading.value = true
+    error.value = null
+
+    try {
+      const params = {}
+      if (userId) params.user_id = userId
+      if (fiscalYear) params.fiscal_year = fiscalYear
+
+      const response = await api.get('/paid-leave/accurate-remaining-days', { params })
+      
+      if (response.data.success) {
+        return response.data.data
+      } else {
+        throw new Error(response.data.message || '正確な残日数の取得に失敗しました')
+      }
+    } catch (err) {
+      console.error('Fetch accurate remaining days failed:', err)
+      error.value = err.message || '正確な残日数の取得に失敗しました'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * freeeから有給休暇実績を取得
+   */
+  const fetchPaidLeaveRecordsFromFreee = async (userId = null, year = null) => {
+    loading.value = true
+    error.value = null
+
+    try {
+      const params = {}
+      if (userId) params.user_id = userId
+      if (year) params.year = year
+
+      const response = await api.get('/paid-leave/records-from-freee', { params })
+      
+      if (response.data.success) {
+        return response.data.data
+      } else {
+        throw new Error(response.data.message || 'freeeからの有給休暇実績取得に失敗しました')
+      }
+    } catch (err) {
+      console.error('Fetch paid leave records from freee failed:', err)
+      error.value = err.message || 'freeeからの有給休暇実績取得に失敗しました'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * freee API経由で有給休暇申請を作成
+   */
+  const applyPaidLeaveViaFreee = async (applicationData) => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.post('/paid-leave/apply-via-freee', applicationData)
+      if (response.data.success) {
+        // 申請一覧を再取得
+        await fetchApplications()
+        return response.data
+      } else {
+        throw new Error(response.data.message || '有給休暇申請に失敗しました')
+      }
+    } catch (err) {
+      console.error('Apply paid leave via freee failed:', err)
+      error.value = err.response?.data?.message || err.message || '有給休暇申請に失敗しました'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * freee API経由で有給休暇申請を承認
+   */
+  const approveApplicationViaFreee = async (applicationId, comment = '') => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.post('/paid-leave/approve-via-freee', {
+        application_id: applicationId,
+        approver_comment: comment
+      })
+      if (response.data.success) {
+        // 申請一覧を再取得
+        await fetchApplications()
+        return response.data
+      } else {
+        throw new Error(response.data.message || '申請承認に失敗しました')
+      }
+    } catch (err) {
+      console.error('Approve application via freee failed:', err)
+      error.value = err.response?.data?.message || err.message || '申請承認に失敗しました'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * freee API経由で有給休暇申請を却下
+   */
+  const rejectApplicationViaFreee = async (applicationId, reason) => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.post('/paid-leave/reject-via-freee', {
+        application_id: applicationId,
+        rejection_reason: reason
+      })
+      if (response.data.success) {
+        // 申請一覧を再取得
+        await fetchApplications()
+        return response.data
+      } else {
+        throw new Error(response.data.message || '申請却下に失敗しました')
+      }
+    } catch (err) {
+      console.error('Reject application via freee failed:', err)
+      error.value = err.response?.data?.message || err.message || '申請却下に失敗しました'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * freee APIから有給休暇申請を同期
+   */
+  const syncApplicationsFromFreee = async () => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.post('/paid-leave/sync-applications-from-freee')
+      if (response.data.success) {
+        // 申請一覧を再取得
+        await fetchApplications()
+        return response.data
+      } else {
+        throw new Error(response.data.message || '申請同期に失敗しました')
+      }
+    } catch (err) {
+      console.error('Sync applications from freee failed:', err)
+      error.value = err.response?.data?.message || err.message || '申請同期に失敗しました'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
    * エラーをクリア
    */
   const clearError = () => {
@@ -185,10 +426,20 @@ export const usePaidLeaveStore = defineStore('paidLeave', () => {
     error,
     fetchPaidLeaveStatus,
     applyPaidLeave,
+    fetchApplications,
     approveApplication,
     rejectApplication,
     fetchAnnualLeaveCheck,
     fetchAllEmployeesLeaveStatus,
+    // freee API統合機能
+    applyPaidLeaveViaFreee,
+    approveApplicationViaFreee,
+    rejectApplicationViaFreee,
+    syncApplicationsFromFreee,
+    syncEmployeesFromFreee,
+    approveAndRegisterToFreee,
+    fetchAccurateRemainingDays,
+    fetchPaidLeaveRecordsFromFreee,
     clearError
   }
 })

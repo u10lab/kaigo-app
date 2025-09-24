@@ -40,6 +40,12 @@ const routes = [
     meta: { requiresAuth: true, role: 'helper' }
   },
   {
+    path: '/paid-leave/application',
+    name: 'PaidLeaveApplication',
+    component: () => import('../views/PaidLeaveApplicationView.vue'),
+    meta: { requiresAuth: true, role: 'helper' }
+  },
+  {
     path: '/admin',
     name: 'AdminDashboard',
     component: () => import('../views/AdminDashboardView.vue'),
@@ -67,6 +73,12 @@ const routes = [
     path: '/admin/paid-leave/:userId',
     name: 'PaidLeaveDetail',
     component: () => import('../views/PaidLeaveDetailView.vue'),
+    meta: { requiresAuth: true, role: 'admin' }
+  },
+  {
+    path: '/admin/paid-leave-approval',
+    name: 'PaidLeaveApproval',
+    component: () => import('../views/PaidLeaveApprovalView.vue'),
     meta: { requiresAuth: true, role: 'admin' }
   },
   {
