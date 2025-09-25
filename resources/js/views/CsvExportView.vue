@@ -19,49 +19,36 @@
             <div class="p-6">
               <form @submit.prevent="handleExport" class="space-y-6">
                 <!-- Export Period -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label class="block text-sm font-medium text-text-primary mb-2">
-                      開始月
-                    </label>
-                    <input
-                      type="month"
-                      v-model="exportForm.startMonth"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-blue focus:border-primary-blue"
-                      required
-                    >
-                  </div>
-                  
-                  <div>
-                    <label class="block text-sm font-medium text-text-primary mb-2">
-                      終了月
-                    </label>
-                    <input
-                      type="month"
-                      v-model="exportForm.endMonth"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-blue focus:border-primary-blue"
-                      required
-                    >
-                  </div>
-                </div>
-  
-                <!-- Export Type -->
                 <div>
                   <label class="block text-sm font-medium text-text-primary mb-2">
-                    出力形式
+                    出力対象月
                   </label>
-                  <select
-                    v-model="exportForm.exportType"
+                  <input
+                    type="month"
+                    v-model="exportForm.targetMonth"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-blue focus:border-primary-blue"
                     required
                   >
-                    <option value="">出力形式を選択</option>
-                    <option value="care_insurance">介護保険請求用</option>
-                    <option value="service_summary">サービス実績一覧</option>
-                    <option value="payroll_summary">給与計算用</option>
-                  </select>
+                  <p class="text-sm text-gray-600 mt-1">選択した月の1日から末日までのサービス記録を出力します。</p>
                 </div>
-  
+
+                <!-- Client Filter -->
+                <div>
+                  <label class="block text-sm font-medium text-text-primary mb-2">
+                    利用者絞り込み
+                  </label>
+                  <select
+                    v-model="exportForm.clientId"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-blue focus:border-primary-blue"
+                  >
+                    <option value="">全利用者</option>
+                    <option v-for="client in clients" :key="client.id" :value="client.id">
+                      {{ client.name }}
+                    </option>
+                  </select>
+                  <p class="text-sm text-gray-600 mt-1">特定の利用者のみを出力する場合は選択してください。利用者を選択した場合、その利用者のみのデータがCSVに出力されます。</p>
+                </div>
+
                 <!-- Export Button -->
                 <div class="flex justify-end">
                   <button
@@ -69,7 +56,7 @@
                     :disabled="loading"
                     class="px-6 py-3 bg-primary-blue text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
                   >
-                    {{ loading ? 'エクスポート中...' : 'CSVエクスポート' }}
+                    {{ loading ? 'エクスポート中...' : '介護保険CSVエクスポート' }}
                   </button>
                 </div>
               </form>
@@ -92,45 +79,37 @@
                       対象期間
                     </th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
-                      出力形式
+                      出力件数
                     </th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
                       ファイル名
                     </th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
-                      ステータス
+                      実行者
                     </th>
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
-                  <tr v-for="(export_record, index) in exportHistory" :key="index">
+                  <tr v-for="export_record in exportHistory" :key="export_record.id">
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-text-primary">
-                      {{ formatDateTime(export_record.created_at) }}
+                      {{ formatDateTime(export_record.exported_at) }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">
-                      {{ formatPeriod(export_record.start_month, export_record.end_month) }}
+                      {{ formatPeriod(export_record.period) }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">
-                      {{ getExportTypeLabel(export_record.export_type) }}
+                      {{ export_record.record_count }}件
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-primary-blue">
-                      <button 
-                        v-if="export_record.status === 'completed'"
-                        @click="downloadFile(export_record.file_name)"
-                        class="hover:text-blue-700"
+                      <button
+                        @click="downloadFile(export_record)"
+                        class="hover:text-blue-700 underline"
                       >
                         {{ export_record.file_name }}
                       </button>
-                      <span v-else class="text-text-secondary">{{ export_record.file_name || '-' }}</span>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <span :class="[
-                        'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                        export_record.status === 'completed' ? 'bg-green-100 text-green-800' : 
-                        export_record.status === 'processing' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
-                      ]">
-                        {{ getStatusLabel(export_record.status) }}
-                      </span>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">
+                      {{ export_record.exported_by }}
                     </td>
                   </tr>
                 </tbody>
@@ -152,134 +131,154 @@
   import Navigation from '../components/Navigation.vue'
   
   const exportForm = ref({
-    startMonth: '2025-01',
-    endMonth: '2025-01',
-    exportType: ''
+    targetMonth: '2025-09',
+    clientId: ''
   })
+
+  const clients = ref([])
   
   const loading = ref(false)
-  const exportHistory = ref([
-    {
-      id: 1,
-      created_at: '2025-01-15T10:30:00',
-      start_month: '2025-01',
-      end_month: '2025-01',
-      export_type: 'care_insurance',
-      file_name: 'care_insurance_202501.csv',
-      status: 'completed'
-    },
-    {
-      id: 2,
-      created_at: '2025-01-10T14:15:00',
-      start_month: '2024-12',
-      end_month: '2024-12',
-      export_type: 'service_summary',
-      file_name: 'service_summary_202412.csv',
-      status: 'completed'
-    }
-  ])
+  const exportHistory = ref([])
+  const currentUser = ref(null)
   
   const handleExport = async () => {
     loading.value = true
-    
+
     try {
-      const response = await api.get('/export/care-insurance', {
-        params: {
-          start_month: exportForm.value.startMonth,
-          end_month: exportForm.value.endMonth,
-          export_type: exportForm.value.exportType
-        }
+      // API URLを構築
+      const params = new URLSearchParams()
+      if (exportForm.value.clientId) {
+        params.append('client_id', exportForm.value.clientId)
+      }
+
+      const url = `/export/care-insurance/${exportForm.value.targetMonth}${params.toString() ? '?' + params.toString() : ''}`
+
+      const response = await api.get(url, {
+        responseType: 'blob'
       })
-      
+
+      // ファイル名を取得
+      const contentDisposition = response.headers['content-disposition']
+      let filename = generateFileName()
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/)
+        if (filenameMatch) {
+          filename = filenameMatch[1]
+        }
+      }
+
       // ダウンロードリンクを作成
-      const blob = new Blob([response.data], { type: 'text/csv' })
-      const url = window.URL.createObjectURL(blob)
+      const blob = new Blob([response.data], { 
+        type: 'text/csv;charset=utf-8'
+      })
+      const downloadUrl = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
-      link.href = url
-      link.download = generateFileName()
+      link.href = downloadUrl
+      link.download = filename
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
-      
-      // 履歴に追加
-      exportHistory.value.unshift({
-        id: Date.now(),
-        created_at: new Date().toISOString(),
-        start_month: exportForm.value.startMonth,
-        end_month: exportForm.value.endMonth,
-        export_type: exportForm.value.exportType,
-        file_name: generateFileName(),
-        status: 'completed'
-      })
-      
+      window.URL.revokeObjectURL(downloadUrl)
+
+      // エクスポート後に履歴を再取得
+      await fetchExportHistory()
+
+      console.log('CSV export completed:', filename)
+
     } catch (error) {
       console.error('Export failed:', error)
-      
-      // デモ用にモックCSVを生成
-      const mockCsv = generateMockCsv()
-      const blob = new Blob([mockCsv], { type: 'text/csv;charset=utf-8' })
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = generateFileName()
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
-      
-      // 履歴に追加
-      exportHistory.value.unshift({
-        id: Date.now(),
-        created_at: new Date().toISOString(),
-        start_month: exportForm.value.startMonth,
-        end_month: exportForm.value.endMonth,
-        export_type: exportForm.value.exportType,
-        file_name: generateFileName(),
-        status: 'completed'
-      })
+      alert('CSV出力に失敗しました。')
     } finally {
       loading.value = false
     }
   }
   
   const generateFileName = () => {
-    const typePrefix = {
-      'care_insurance': 'care_insurance',
-      'service_summary': 'service_summary',
-      'payroll_summary': 'payroll_summary'
-    }[exportForm.value.exportType] || 'export'
-    
-    const period = exportForm.value.startMonth === exportForm.value.endMonth 
-      ? exportForm.value.startMonth.replace('-', '')
-      : `${exportForm.value.startMonth.replace('-', '')}_${exportForm.value.endMonth.replace('-', '')}`
-    
-    return `${typePrefix}_${period}.csv`
+    const period = exportForm.value.targetMonth.replace('-', '')
+    let filename = `care_insurance_${period}`
+
+    if (exportForm.value.clientId) {
+      const client = clients.value.find(c => c.id === exportForm.value.clientId)
+      if (client) {
+        filename += `_${client.name}`
+      }
+    }
+
+    return `${filename}.csv`
   }
   
-  const generateMockCsv = () => {
-    const headers = ['利用者ID', '利用者名', 'サービス種別', '実施日', '開始時間', '終了時間', '時間数', '単価', '金額']
-    const rows = [
-      ['A001', '山田一郎', '入浴介護', '2025-01-15', '09:00', '11:00', '2.0', '1500', '3000'],
-      ['A002', '田中花子', '掃除', '2025-01-15', '13:00', '14:00', '1.0', '1200', '1200'],
-      ['A003', '佐々木健一', '生活援助', '2025-01-15', '15:00', '16:30', '1.5', '1300', '1950']
-    ]
-    
-    return [headers.join(','), ...rows.map(row => row.join(','))].join('\n')
-  }
   
-  const downloadFile = (fileName) => {
-    // デモ用にファイルを再生成
-    const mockCsv = generateMockCsv()
-    const blob = new Blob([mockCsv], { type: 'text/csv;charset=utf-8' })
-    const url = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = fileName
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    window.URL.revokeObjectURL(url)
+  const downloadFile = async (exportRecord) => {
+    try {
+      loading.value = true
+      
+      // 認証状態をチェック
+      try {
+        const authCheck = await api.get('/user')
+        console.log('Auth check response:', authCheck.data)
+        
+        if (!authCheck.data) {
+          console.error('No user data received')
+          alert('ユーザー情報が取得できませんでした。')
+          return
+        }
+        
+        if (authCheck.data.role !== 'admin') {
+          console.error('User role is not admin:', authCheck.data.role)
+          alert(`管理者権限が必要です。現在の権限: ${authCheck.data.role}`)
+          return
+        }
+        
+        console.log('Authentication check passed, user is admin')
+      } catch (authError) {
+        console.error('Authentication check failed:', authError)
+        alert('認証エラーが発生しました。ログインし直してください。')
+        return
+      }
+      
+      // バックエンドAPIを呼び出してファイルをダウンロード
+      console.log('Attempting to download file for history ID:', exportRecord.id)
+      const response = await api.get(`/export/download/${exportRecord.id}`, {
+        responseType: 'blob'
+      })
+      console.log('Download response received:', response)
+      
+      // レスポンスがHTMLかどうかチェック（認証エラーの場合）
+      if (response.data instanceof Blob) {
+        const text = await response.data.text()
+        if (text.includes('<!DOCTYPE html>') || text.includes('<html')) {
+          console.error('Received HTML instead of CSV, likely authentication error')
+          alert('認証エラーが発生しました。ログインし直してください。')
+          return
+        }
+        
+        // 正しいCSVデータの場合
+        const csvBlob = new Blob([response.data], { 
+          type: 'text/csv;charset=utf-8'
+        })
+        const url = window.URL.createObjectURL(csvBlob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = exportRecord.file_name
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        window.URL.revokeObjectURL(url)
+        
+        console.log('File download completed:', exportRecord.file_name)
+      }
+    } catch (error) {
+      console.error('File download failed:', error)
+      if (error.response && error.response.status === 401) {
+        alert('認証エラーが発生しました。ログインし直してください。')
+      } else if (error.response && error.response.status === 403) {
+        alert('管理者権限が必要です。')
+      } else {
+        alert('ファイルのダウンロードに失敗しました。')
+      }
+    } finally {
+      loading.value = false
+    }
   }
   
   const formatDateTime = (dateTimeString) => {
@@ -292,41 +291,43 @@
     })
   }
   
-  const formatPeriod = (startMonth, endMonth) => {
-    const formatMonth = (month) => {
-      const [year, monthNum] = month.split('-')
-      return `${year}年${monthNum}月`
-    }
-    
-    if (startMonth === endMonth) {
-      return formatMonth(startMonth)
-    }
-    return `${formatMonth(startMonth)} - ${formatMonth(endMonth)}`
+  const formatPeriod = (period) => {
+    const [year, month] = period.split('-')
+    return `${year}年${month}月`
   }
   
   const getExportTypeLabel = (type) => {
-    const labels = {
-      'care_insurance': '介護保険請求用',
-      'service_summary': 'サービス実績一覧',
-      'payroll_summary': '給与計算用'
-    }
-    return labels[type] || type
+    return '介護保険請求用'
   }
   
-  const getStatusLabel = (status) => {
-    const labels = {
-      'completed': '完了',
-      'processing': '処理中',
-      'failed': 'エラー'
-    }
-    return labels[status] || status
-  }
   
-  onMounted(() => {
-    // Initialize with current month
+  const fetchClients = async () => {
+    try {
+      const response = await api.get('/service/clients')
+      clients.value = response.data.data || []
+    } catch (error) {
+      console.error('Failed to fetch clients:', error)
+      clients.value = []
+    }
+  }
+
+  const fetchExportHistory = async () => {
+    try {
+      const response = await api.get('/export/history')
+      exportHistory.value = response.data.export_history || []
+    } catch (error) {
+      console.error('Failed to fetch export history:', error)
+      exportHistory.value = []
+    }
+  }
+
+  onMounted(async () => {
+    await fetchClients()
+    await fetchExportHistory()
+
+    // Initialize with current month (September 2025 as per requirements)
     const now = new Date()
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-    exportForm.value.startMonth = currentMonth
-    exportForm.value.endMonth = currentMonth
+    exportForm.value.targetMonth = currentMonth
   })
   </script>

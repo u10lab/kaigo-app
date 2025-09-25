@@ -78,5 +78,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('export')->group(function () {
         Route::get('/care-insurance/{month}', [ExportController::class, 'exportCareInsurance']);
         Route::get('/care-insurance/{month}/stats', [ExportController::class, 'getCareInsuranceStats']);
+        Route::get('/history', [ExportController::class, 'getExportHistory']);
+        Route::get('/download/{historyId}', [ExportController::class, 'downloadFile']);
     });
 });

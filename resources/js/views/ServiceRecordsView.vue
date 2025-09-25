@@ -112,12 +112,6 @@
               <h2 class="text-lg leading-6 font-medium text-text-primary">
                 サービス実施記録 {{ filters.month === 'all' ? '(全期間)' : `(${formatMonth(filters.month)})` }}
               </h2>
-              <button
-                @click="exportToCsv"
-                class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
-              >
-                CSV出力
-              </button>
             </div>
             
             <div class="overflow-x-auto">
@@ -191,6 +185,7 @@
               </div>
             </div>
           </div>
+
         </div>
       </div>
     </div>
@@ -305,30 +300,6 @@
     }
   }
   
-  const exportToCsv = () => {
-    const headers = ['実施日', '利用者', 'サービス種別', '開始時間', '終了時間', '時間数', '時給', '金額']
-    const rows = filteredRecords.value.map(record => [
-      formatDate(record.start_time),
-      record.client_name,
-      record.service_type,
-      formatTime(record.start_time),
-      formatTime(record.end_time),
-      (record.duration / 60).toFixed(1),
-      record.hourly_rate,
-      ((record.duration / 60) * record.hourly_rate).toFixed(0)
-    ])
-    
-    const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n')
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' })
-    const url = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `service_records_${filters.value.month.replace('-', '')}.csv`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    window.URL.revokeObjectURL(url)
-  }
   
   const fetchEmployees = async () => {
     try {
