@@ -51,7 +51,7 @@ export const useFreeeStore = defineStore('freee', () => {
   const clockOut = async () => {
     try {
       const response = await api.post('/freee/clock-out')
-      workStatus.value = 'finished'
+      workStatus.value = 'completed'
       workStartTime.value = null
       return response.data
     } catch (error) {
@@ -59,7 +59,7 @@ export const useFreeeStore = defineStore('freee', () => {
       // freee認証未完了時はローカルで勤務状態を管理
       if (error.response?.status === 400 && error.response?.data?.error?.includes('認証が完了していません')) {
         console.log('Freee authentication not completed, using local work status')
-        workStatus.value = 'finished'
+        workStatus.value = 'completed'
         workStartTime.value = null
         return { message: '勤務終了（ローカル管理）', local: true }
       }
@@ -69,21 +69,33 @@ export const useFreeeStore = defineStore('freee', () => {
 
   const fetchWorkRecords = async (month) => {
     try {
-      const response = await api.get('/freee/work-records', { params: { month } })
-      workRecords.value = response.data.records
-      return response.data
+      // 新しいサービス記録ベースの勤務状態APIを使用
+      const response = await api.get('/service/work-status')
+      
+      if (response.data.success) {
+        const data = response.data.data
+        
+        // 勤務状態を設定
+        workStatus.value = data.work_status
+        workStartTime.value = data.work_start_time
+        
+        // 勤務記録を設定（サービス記録から変換）
+        workRecords.value = data.today_services || []
+        
+        console.log('Work status loaded from service records:', data)
+        return { records: data.today_services || [], local: true }
+      } else {
+        throw new Error(response.data.error || 'Failed to get work status')
+      }
     } catch (error) {
       console.error('Fetch work records failed:', error)
-      // freee認証未完了時はモックデータを返す
-      if (error.response?.status === 400 && error.response?.data?.error?.includes('認証が完了していません')) {
-        console.log('Freee authentication not completed, using mock work records')
-        const mockRecords = [
-          { date: '2025-01-15', start_time: '09:00', end_time: '17:00', break_time: 60, work_time: 420 }
-        ]
-        workRecords.value = mockRecords
-        return { records: mockRecords, local: true }
-      }
-      throw error
+      // エラーが発生した場合は空のデータを返し、状態はidleに設定
+      workRecords.value = []
+      workStatus.value = 'idle'
+      workStartTime.value = null
+      
+      console.log('Work records fetch failed, but continuing with empty data')
+      return { records: [], local: true }
     }
   }
 
@@ -134,6 +146,17 @@ export const useFreeeStore = defineStore('freee', () => {
     }
   }
 
+  // 認証状態チェック
+  const checkAuthStatus = async () => {
+    try {
+      const response = await api.get('/freee/auth-status')
+      return response.data
+    } catch (error) {
+      console.error('Failed to check auth status:', error)
+      throw error
+    }
+  }
+
   return {
     isAuthenticated,
     workStatus,
@@ -146,6 +169,7 @@ export const useFreeeStore = defineStore('freee', () => {
     fetchWorkRecords,
     fetchPayrollData,
     updateEmployeeIds,
-    fetchEmployees
+    fetchEmployees,
+    checkAuthStatus
   }
 })

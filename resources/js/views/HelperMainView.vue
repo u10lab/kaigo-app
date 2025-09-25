@@ -2,6 +2,24 @@
     <div class="min-h-screen gradient-bg">
       <div class="absolute inset-0 bg-black bg-opacity-10"></div>
       <div class="relative z-10">
+      
+      <!-- Header with Logout Button -->
+      <div class="flex justify-between items-center p-4">
+        <div class="flex items-center">
+          <h1 class="text-2xl font-bold text-white">ヘルパーダッシュボード</h1>
+        </div>
+        <div class="flex items-center space-x-4">
+          <span class="text-white font-medium">{{ authStore.user?.name }}さん</span>
+          <button
+            @click="handleLogout"
+            class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center space-x-2"
+          >
+            <span>🚪</span>
+            <span>ログアウト</span>
+          </button>
+        </div>
+      </div>
+      
       <!-- Status Display -->
       <div class="p-4">
         <StatusDisplay 
@@ -28,7 +46,7 @@
               <div>
                 <p class="text-xs text-text-secondary mb-1 font-medium">{{ record.employee_name || authStore.user?.name }}</p>
                 <p class="font-bold text-text-primary text-lg">{{ record.client_name }}</p>
-                <p class="text-sm text-blue-600 font-medium">{{ record.service_type }}</p>
+                <p class="text-sm text-blue-600 font-medium">{{ getServiceTypeName(record) }}</p>
               </div>
               <div class="text-right">
                 <p class="text-sm text-text-primary font-mono font-medium">
@@ -43,6 +61,7 @@
   
       <!-- Action Buttons -->
       <div class="p-6 space-y-6">
+        
         <ClockButton
           v-if="freeeStore.workStatus === 'idle'"
           type="work-start"
@@ -69,6 +88,11 @@
             type="service-end"
             label="サービス終了"
             @click="handleServiceEnd"
+          />
+          <ClockButton
+            type="work-end"
+            label="退勤"
+            @click="handleClockOut"
           />
         </div>
   
@@ -139,6 +163,7 @@
   import { useAuthStore } from '../stores/auth'
   import ClockButton from '../components/ClockButton.vue'
   import StatusDisplay from '../components/StatusDisplay.vue'
+  import api from '../services/api'
   
   const router = useRouter()
   const freeeStore = useFreeeStore()
@@ -207,34 +232,103 @@
     return annualAlert.value?.icon || '💡'
   })
   
+  
   const handleClockIn = async () => {
     try {
-      await freeeStore.clockIn()
+      const result = await freeeStore.clockIn()
+      
+      // WorkRecordに記録
+      try {
+        await api.post('/service/clock-in')
+      } catch (recordError) {
+        console.error('Failed to record clock in:', recordError)
+      }
+      
+      // ローカルストレージに勤務状態を保存
+      localStorage.setItem('workStatus', freeeStore.workStatus)
+      localStorage.setItem('workStartTime', freeeStore.workStartTime)
     } catch (error) {
       console.error('Clock in failed:', error)
       // デモ用にAPI無しでも動作を許可
       freeeStore.workStatus = 'working'
       freeeStore.workStartTime = new Date().toISOString()
+      
+      // WorkRecordに記録（ローカル状態でも）
+      try {
+        await api.post('/service/clock-in')
+      } catch (recordError) {
+        console.error('Failed to record clock in (local):', recordError)
+      }
+      
+      // ローカルストレージに勤務状態を保存
+      localStorage.setItem('workStatus', freeeStore.workStatus)
+      localStorage.setItem('workStartTime', freeeStore.workStartTime)
     }
   }
   
   const handleClockOut = async () => {
     try {
       await freeeStore.clockOut()
+      
+      // WorkRecordに記録
+      try {
+        await api.post('/service/clock-out')
+      } catch (recordError) {
+        console.error('Failed to record clock out:', recordError)
+      }
+      
+      // 退勤時にローカルストレージをクリア
+      localStorage.removeItem('workStatus')
+      localStorage.removeItem('workStartTime')
     } catch (error) {
       console.error('Clock out failed:', error)
       // デモ用にAPI無しでも動作を許可
-      freeeStore.workStatus = 'finished'
+      freeeStore.workStatus = 'completed'
       freeeStore.currentService = null
+      
+      // WorkRecordに記録（ローカル状態でも）
+      try {
+        await api.post('/service/clock-out')
+      } catch (recordError) {
+        console.error('Failed to record clock out (local):', recordError)
+      }
+      
+      // 退勤時にローカルストレージをクリア
+      localStorage.removeItem('workStatus')
+      localStorage.removeItem('workStartTime')
     }
   }
   
   const handleServiceEnd = async () => {
     try {
       await serviceStore.endService()
-      console.log('Service ended successfully')
+      
+      // サービス終了後も勤務中状態を維持
+      if (freeeStore.workStatus === 'working') {
+        // ローカルストレージを更新（勤務中状態を維持）
+        localStorage.setItem('workStatus', freeeStore.workStatus)
+        localStorage.setItem('workStartTime', freeeStore.workStartTime)
+      }
     } catch (error) {
       console.error('Service end failed:', error)
+    }
+  }
+  
+  const handleLogout = async () => {
+    try {
+      // ログアウト処理
+      await authStore.logout()
+      
+      // ローカルストレージをクリア
+      localStorage.removeItem('workStatus')
+      localStorage.removeItem('workStartTime')
+      
+      // ログインページにリダイレクト
+      router.push('/login')
+    } catch (error) {
+      console.error('Logout failed:', error)
+      // エラーが発生してもログインページにリダイレクト
+      router.push('/login')
     }
   }
   
@@ -250,13 +344,120 @@
     })
   }
   
+  const getServiceTypeName = (record) => {
+    if (!record) return ''
+    
+    // オブジェクトの場合
+    if (typeof record.service_type === 'object' && record.service_type !== null) {
+      return record.service_type.name || ''
+    }
+    
+    // 文字列の場合
+    if (typeof record.service_type === 'string') {
+      return record.service_type
+    }
+    
+    return ''
+  }
+  
   onMounted(async () => {
+    // 勤務状態とサービス状態を取得
+    try {
+      // 勤務記録を取得（エラーが発生しても処理を続行）
+      try {
+        await freeeStore.fetchWorkRecords()
+        
+        // ローカルストレージの状態を優先する
+        const localWorkStatus = localStorage.getItem('workStatus')
+        const localWorkStartTime = localStorage.getItem('workStartTime')
+        
+        // ローカルストレージとデータベースの状態を比較して適切に処理
+        if (localWorkStatus === 'working' && localWorkStartTime) {
+          // データベースの状態も確認
+          if (freeeStore.workStatus === 'idle' || freeeStore.workStatus === 'completed') {
+            // データベースが退勤済みの場合は、ローカルストレージをクリア
+            localStorage.removeItem('workStatus')
+            localStorage.removeItem('workStartTime')
+          } else {
+            // データベースも勤務中の場合は、ローカルストレージの状態を使用
+            freeeStore.workStatus = 'working'
+            freeeStore.workStartTime = localWorkStartTime
+          }
+        } else if (localWorkStatus === 'completed') {
+          // ローカルストレージが'completed'の場合は、データベースの状態に関係なく'completed'に設定
+          freeeStore.workStatus = 'completed'
+        }
+      } catch (error) {
+        console.error('Helper: Failed to load work records:', error)
+        // 勤務記録の取得に失敗しても処理を続行
+      }
+      
+      // 退勤状態をチェック
+      let isClockedOut = false
+      try {
+        const clockOutResponse = await api.get('/service/clock-out-status')
+        if (clockOutResponse.data.success) {
+          isClockedOut = clockOutResponse.data.data.is_clocked_out
+        }
+      } catch (error) {
+        console.error('Helper: Failed to check clock out status:', error)
+        // エラーの場合は退勤していないとみなす
+        isClockedOut = false
+      }
+      
+      // 退勤している場合は勤務状態をcompletedに設定
+      if (isClockedOut) {
+        freeeStore.workStatus = 'completed'
+        // 退勤時はローカルストレージをクリア
+        localStorage.removeItem('workStatus')
+        localStorage.removeItem('workStartTime')
+      }
+      
+      // サービス状態を取得
+      const serviceStatus = await serviceStore.fetchCurrentServiceStatus()
+      
+      // サービスが開始されている場合は勤務状態を適切に設定
+      if (serviceStatus) {
+        
+        // ユーザーIDの一致を確認
+        if (serviceStatus.user_id === authStore.user?.id) {
+          // サービスが開始されている場合は勤務中として扱う
+          freeeStore.workStatus = 'working'
+          // 勤務開始時刻が設定されていない場合は現在時刻を設定
+          if (!freeeStore.workStartTime) {
+            freeeStore.workStartTime = new Date().toLocaleTimeString('ja-JP', { 
+              hour: '2-digit', 
+              minute: '2-digit',
+              hour12: false 
+            })
+          }
+          
+          // サービスが開始されている場合はメイン画面でサービス終了・退勤ボタンを表示
+          console.log('Helper: Service is active for current user, showing service end and clock out buttons')
+        } else {
+          console.log('Helper: Service found but for different user, ignoring')
+        }
+      } else {
+        console.log('Helper: No active service found for current user')
+        // サービスがない場合の処理
+        // fetchWorkRecords()で取得された勤務状態をそのまま使用
+        console.log('Helper: Using work status from fetchWorkRecords:', freeeStore.workStatus)
+      }
+      
+      console.log('Helper: Final work status:', freeeStore.workStatus)
+      
+      console.log('Helper: Work and service status loaded')
+    } catch (error) {
+      console.error('Helper: Failed to load work and service status:', error)
+    }
+
     // freee認証状態を確認
     try {
       const authStatus = await freeeStore.checkAuthStatus()
       console.log('Helper: Freee auth status:', authStatus)
     } catch (error) {
       console.error('Helper: Failed to check freee auth status:', error)
+      // freee認証チェックの失敗は非致命的なので、処理を続行
     }
 
     // 有給休暇ステータスを読み込み（API接続テスト用）

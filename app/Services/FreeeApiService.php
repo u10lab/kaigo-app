@@ -120,6 +120,12 @@ class FreeeApiService
 
             $data = json_decode($response->getBody()->getContents(), true);
 
+            // レスポンスデータの検証
+            if (!$data || !isset($data['access_token'])) {
+                Log::error('Invalid token refresh response', ['response' => $data]);
+                throw new \Exception('トークン更新のレスポンスが無効です。');
+            }
+
             // トークンを更新
             $this->updateToken($data);
 
@@ -156,7 +162,12 @@ class FreeeApiService
 
             return json_decode($response->getBody()->getContents(), true);
         } catch (GuzzleException $e) {
-            Log::error('Freee API clock in error: ' . $e->getMessage());
+            $errorResponse = $e->getResponse() ? $e->getResponse()->getBody()->getContents() : null;
+            Log::error('Freee API clock in error: ' . $e->getMessage(), [
+                'employee_id' => $employeeId,
+                'error_response' => $errorResponse,
+                'status_code' => $e->getResponse() ? $e->getResponse()->getStatusCode() : null
+            ]);
             throw new \Exception('勤務開始打刻に失敗しました。');
         }
     }
@@ -192,28 +203,6 @@ class FreeeApiService
         }
     }
 
-    /**
-     * 勤務記録取得
-     */
-    public function getWorkRecords(string $accessToken, int $employeeId, string $month): array
-    {
-        try {
-            $response = $this->httpClient->get("{$this->baseUrl}/hr/api/v1/work_records", [
-                'headers' => [
-                    'Authorization' => "Bearer {$accessToken}",
-                ],
-                'query' => [
-                    'employee_id' => $employeeId,
-                    'year_month' => $month,
-                ],
-            ]);
-
-            return json_decode($response->getBody()->getContents(), true);
-        } catch (GuzzleException $e) {
-            Log::error('Freee API work records error: ' . $e->getMessage());
-            throw new \Exception('勤務記録の取得に失敗しました。');
-        }
-    }
 
     /**
      * 給与データ取得
@@ -306,14 +295,28 @@ class FreeeApiService
      */
     private function updateToken(array $tokenData): void
     {
+        // 必要なデータの存在確認
+        if (!isset($tokenData['company_id']) || !isset($tokenData['access_token'])) {
+            Log::error('Missing required token data', ['tokenData' => $tokenData]);
+            throw new \Exception('トークンデータが不完全です。');
+        }
+
         $token = FreeeToken::where('company_id', $tokenData['company_id'])->first();
         
         if ($token) {
             $token->update([
                 'access_token' => $tokenData['access_token'],
-                'refresh_token' => $tokenData['refresh_token'],
-                'expires_at' => now()->addSeconds($tokenData['expires_in']),
+                'refresh_token' => $tokenData['refresh_token'] ?? $token->refresh_token,
+                'expires_at' => now()->addSeconds($tokenData['expires_in'] ?? 3600),
             ]);
+            
+            Log::info('Token updated successfully', [
+                'company_id' => $tokenData['company_id'],
+                'expires_at' => now()->addSeconds($tokenData['expires_in'] ?? 3600)
+            ]);
+        } else {
+            Log::error('Token not found for company', ['company_id' => $tokenData['company_id']]);
+            throw new \Exception('該当するトークンが見つかりません。');
         }
     }
 

@@ -31,6 +31,56 @@ class FreeeController extends Controller
     }
 
     /**
+     * freee認証状態を取得
+     */
+    public function getAuthStatus()
+    {
+        try {
+            $token = FreeeToken::first();
+            
+            if (!$token) {
+                return response()->json([
+                    'authenticated' => false,
+                    'message' => 'freee認証情報が見つかりません。',
+                    'auth_url' => $this->freeeApiService->getAuthorizationUrl()
+                ]);
+            }
+
+            // トークンの有効性をチェック
+            $isValid = false;
+            $accessToken = null;
+            
+            if (!$token->isExpired()) {
+                $isValid = true;
+                $accessToken = $token->access_token;
+            } else if ($token->refresh_token) {
+                // リフレッシュトークンで更新を試行
+                try {
+                    $accessToken = $token->getValidAccessToken();
+                    $isValid = true;
+                } catch (\Exception $e) {
+                    Log::error('Token refresh failed in getAuthStatus: ' . $e->getMessage());
+                }
+            }
+
+            return response()->json([
+                'authenticated' => $isValid,
+                'has_access_token' => !is_null($accessToken),
+                'expires_at' => $token->expires_at?->toISOString(),
+                'company_id' => $token->company_id,
+                'auth_url' => $isValid ? null : $this->freeeApiService->getAuthorizationUrl()
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Get auth status error: ' . $e->getMessage());
+            return response()->json([
+                'authenticated' => false,
+                'message' => '認証状態の確認に失敗しました。',
+                'auth_url' => $this->freeeApiService->getAuthorizationUrl()
+            ], 500);
+        }
+    }
+
+    /**
      * freee OAuth認証コールバック
      */
     public function callback(Request $request)
@@ -183,34 +233,6 @@ class FreeeController extends Controller
         }
     }
 
-    /**
-     * 勤務記録取得
-     */
-    public function getWorkRecords(Request $request)
-    {
-        $user = Auth::user();
-        $month = $request->query('month', now()->format('Y-m'));
-        $token = FreeeToken::first();
-
-        if (!$token) {
-            return response()->json([
-                'error' => 'freee認証が完了していません。',
-            ], 400);
-        }
-
-        try {
-            $accessToken = $token->getValidAccessToken();
-            $result = $this->freeeApiService->getWorkRecords($accessToken, (int)$user->employee_id, $month);
-            
-            return response()->json([
-                'data' => $result,
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-    }
 
     /**
      * 従業員一覧取得

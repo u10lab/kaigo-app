@@ -33,23 +33,27 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'user']);
     
     // freee連携API
+    Route::get('/freee/auth-status', [FreeeController::class, 'getAuthStatus']);
     Route::get('/freee/employees', [FreeeController::class, 'getEmployees']);
     Route::post('/freee/update-employee-ids', [FreeeController::class, 'updateEmployeeIds']);
     Route::post('/freee/map-employee-id', [FreeeController::class, 'mapEmployeeId']);
     Route::post('/freee/clock-in', [FreeeController::class, 'clockIn']);
     Route::post('/freee/clock-out', [FreeeController::class, 'clockOut']);
-    Route::get('/freee/work-records', [FreeeController::class, 'getWorkRecords']);
     Route::get('/freee/payroll', [FreeeController::class, 'getPayroll']);
     
-    // サービス記録API
-    Route::prefix('service')->group(function () {
-        Route::post('/start', [ServiceController::class, 'start']);
-        Route::post('/{id}/end', [ServiceController::class, 'end']);
-        Route::get('/records', [ServiceController::class, 'getRecords']);
-        Route::get('/current-status', [ServiceController::class, 'getCurrentStatus']);
-        Route::get('/clients', [ServiceController::class, 'getClients']);
-        Route::get('/service-types', [ServiceController::class, 'getServiceTypes']);
-    });
+        // サービス記録API
+        Route::prefix('service')->group(function () {
+            Route::post('/start', [ServiceController::class, 'start']);
+            Route::post('/{id}/end', [ServiceController::class, 'end']);
+            Route::get('/records', [ServiceController::class, 'getRecords']);
+            Route::get('/current-status', [ServiceController::class, 'getCurrentStatus']);
+            Route::get('/work-status', [ServiceController::class, 'getWorkStatus']);
+            Route::get('/clock-out-status', [ServiceController::class, 'checkClockOutStatus']);
+            Route::post('/clock-in', [ServiceController::class, 'recordClockIn']);
+            Route::post('/clock-out', [ServiceController::class, 'recordClockOut']);
+            Route::get('/clients', [ServiceController::class, 'getClients']);
+            Route::get('/service-types', [ServiceController::class, 'getServiceTypes']);
+        });
     
     // 給与計算API
     Route::prefix('payroll')->group(function () {

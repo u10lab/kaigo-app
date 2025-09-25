@@ -89,8 +89,25 @@ export const useServiceStore = defineStore('service', () => {
     }
   }
 
+  // 現在のサービス状況を確認
+  const checkCurrentService = async () => {
+    try {
+      const response = await api.get('/service/current-status')
+      return response.data
+    } catch (error) {
+      console.error('Failed to check current service:', error)
+      return null
+    }
+  }
+
   const startService = async (clientId, serviceTypeId) => {
     try {
+      // 既存のサービスがあるかチェック
+      const currentServiceCheck = await checkCurrentService()
+      if (currentServiceCheck?.success && currentServiceCheck.data) {
+        throw new Error('既にサービスが開始されています。先にサービスを終了してください。')
+      }
+
       const requestData = {
         client_id: parseInt(clientId),
         service_type_id: parseInt(serviceTypeId)
@@ -100,16 +117,9 @@ export const useServiceStore = defineStore('service', () => {
       const response = await api.post('/service/start', requestData)
       
       if (response.data.success) {
-        // API成功時: サーバーから返されたデータを使用
-        currentService.value = {
-          id: response.data.data.id,
-          client_id: clientId,
-          service_type_id: serviceTypeId,
-          client_name: response.data.data.client?.name || 'Unknown',
-          service_type: response.data.data.serviceType?.name || 'Unknown',
-          hourly_rate: response.data.data.serviceType?.hourly_rate || 0,
-          start_time: response.data.data.service_start_time
-        }
+        // API成功時: サーバーから返されたデータをそのまま使用
+        currentService.value = response.data.data
+        console.log('Service started - currentService set to:', currentService.value)
       }
       
       return response.data
@@ -220,6 +230,7 @@ export const useServiceStore = defineStore('service', () => {
     fetchServiceTypes,
     fetchServiceRecords,
     fetchCurrentServiceStatus,
+    checkCurrentService,
     startService,
     endService
   }

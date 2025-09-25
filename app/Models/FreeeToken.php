@@ -49,13 +49,30 @@ class FreeeToken extends Model
             throw new \Exception('リフレッシュトークンがありません。');
         }
 
-        $freeeApiService = app(\App\Services\FreeeApiService::class);
-        $newTokenData = $freeeApiService->refreshAccessToken($this->refresh_token);
-        
-        $this->update([
-            'access_token' => $newTokenData['access_token'],
-            'refresh_token' => $newTokenData['refresh_token'],
-            'expires_at' => now()->addSeconds($newTokenData['expires_in']),
-        ]);
+        try {
+            $freeeApiService = app(\App\Services\FreeeApiService::class);
+            $newTokenData = $freeeApiService->refreshAccessToken($this->refresh_token);
+            
+            if (!$newTokenData || !isset($newTokenData['access_token'])) {
+                throw new \Exception('トークン更新に失敗しました。');
+            }
+            
+            $this->update([
+                'access_token' => $newTokenData['access_token'],
+                'refresh_token' => $newTokenData['refresh_token'] ?? $this->refresh_token,
+                'expires_at' => now()->addSeconds($newTokenData['expires_in'] ?? 3600),
+            ]);
+            
+            Log::info('FreeeToken refreshed successfully', [
+                'company_id' => $this->company_id,
+                'expires_at' => now()->addSeconds($newTokenData['expires_in'] ?? 3600)
+            ]);
+        } catch (\Exception $e) {
+            Log::error('FreeeToken refresh failed', [
+                'company_id' => $this->company_id,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
+        }
     }
 }
