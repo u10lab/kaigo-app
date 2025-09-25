@@ -422,32 +422,4 @@ class FreeeController extends Controller
         }
     }
 
-    /**
-     * 給与データ取得
-     */
-    public function getPayroll(Request $request)
-    {
-        $user = Auth::user();
-        $month = $request->query('month', now()->format('Y-m'));
-        $token = FreeeToken::first();
-
-        if (!$token) {
-            return response()->json([
-                'error' => 'freee認証が完了していません。',
-            ], 400);
-        }
-
-        try {
-            $accessToken = $token->getValidAccessToken();
-            $result = $this->freeeApiService->getPayroll($accessToken, (int)$user->employee_id, $month);
-            
-            return response()->json([
-                'data' => $result,
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-    }
 }

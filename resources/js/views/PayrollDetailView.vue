@@ -58,12 +58,19 @@
                 <h2 class="text-lg font-medium text-text-primary">労働時間</h2>
               </div>
               <div class="p-6">
-                <div class="grid grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
                     <div class="text-xl font-semibold text-text-primary">
                       {{ payrollDetail.total_hours || 0 }}時間
                     </div>
                     <div class="text-sm text-text-secondary">総労働時間</div>
+                  </div>
+                  
+                  <div>
+                    <div class="text-xl font-semibold text-text-primary">
+                      ¥{{ payrollDetail.base_hourly_rate?.toLocaleString() || 0 }}/時
+                    </div>
+                    <div class="text-sm text-text-secondary">基本時給</div>
                   </div>
                   
                   <div v-if="payrollDetail.overtime_hours">
@@ -155,15 +162,29 @@
   }
   
   const loadPayrollDetail = async () => {
+    console.log('=== 給与詳細ページ データ取得開始 ===')
+    console.log('パラメータ:', { userId, month })
+
     try {
+      console.log('給与計算API呼び出し...')
       const data = await payrollStore.fetchPayrollData(month, userId)
+
+      console.log('給与詳細データ取得完了:', data)
       payrollDetail.value = data
-      
+
       // ストアから従業員名を取得
       const employee = payrollStore.employees.find(emp => emp.id == userId)
-      employeeName.value = employee?.name || 'Unknown'
+      employeeName.value = employee?.name || data.employee_name || 'Unknown'
+
+      console.log('従業員名:', employeeName.value)
+      console.log('=== 給与詳細ページ データ取得完了 ===')
     } catch (error) {
-      console.error('Failed to load payroll detail:', error)
+      console.error('給与詳細取得エラー:', error)
+      console.error('エラー詳細:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      })
     }
   }
   

@@ -158,6 +158,24 @@ class FreeeApiService
         return $token->access_token;
     }
 
+    private function getValidTokenAndCompany(): array
+    {
+        $token = FreeeToken::first();
+        if (!$token) {
+            throw new \Exception('freee認証情報が見つかりません。');
+        }
+
+        $accessToken = $token->getValidAccessToken();
+        if (!$accessToken) {
+            throw new \Exception('有効なfreee APIアクセストークンがありません。');
+        }
+
+        return [
+            'access_token' => $accessToken,
+            'company_id' => $token->company_id,
+        ];
+    }
+
     /**
      * 勤務開始打刻
      */
@@ -226,27 +244,51 @@ class FreeeApiService
     }
 
 
+
     /**
-     * 給与データ取得
+     * 給与明細取得（時給制対応）
      */
-    public function getPayroll(string $accessToken, int $employeeId, string $month): array
+    public function getEmployeePayrollStatement(int $employeeId, int $year, int $month): array
     {
         try {
-            $response = $this->httpClient->get("{$this->baseUrl}/hr/api/v1/payrolls", [
+            $tokenData = $this->getValidTokenAndCompany();
+
+            $response = $this->httpClient->get("{$this->baseUrl}/hr/api/v1/salaries/employee_payroll_statements/{$employeeId}", [
                 'headers' => [
-                    'Authorization' => "Bearer {$accessToken}",
+                    'Authorization' => "Bearer {$tokenData['access_token']}",
+                    'FREEE-VERSION' => '2022-02-01',
                 ],
                 'query' => [
-                    'employee_id' => $employeeId,
-                    'year_month' => $month,
+                    'company_id' => $tokenData['company_id'],
+                    'year' => $year,
+                    'month' => $month,
                 ],
             ]);
 
             return json_decode($response->getBody()->getContents(), true);
         } catch (GuzzleException $e) {
-            Log::error('Freee API payroll error: ' . $e->getMessage());
-            throw new \Exception('給与データの取得に失敗しました。');
+            $responseBody = null;
+            if (method_exists($e, 'getResponse') && $e->getResponse()) {
+                $responseBody = $e->getResponse()->getBody()->getContents();
+            }
+            
+            Log::error('Freee API payroll statement error: ' . $e->getMessage(), [
+                'employee_id' => $employeeId,
+                'year' => $year,
+                'month' => $month,
+                'response' => $responseBody,
+            ]);
+            throw new \Exception('給与明細の取得に失敗しました。');
         }
+    }
+
+    /**
+     * @deprecated 基本給ルールAPIは時給制には適用できないため、給与明細APIに移行
+     */
+    public function getEmployeeBasicPayRule(int $employeeId, int $year, int $month): array
+    {
+        // 給与明細APIにフォールバック
+        return $this->getEmployeePayrollStatement($employeeId, $year, $month);
     }
 
     /**

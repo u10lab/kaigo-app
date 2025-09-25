@@ -31,6 +31,7 @@ Route::get('/freee/callback', [FreeeController::class, 'callback']);
 // 認証が必要なルート
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'user']);
+    Route::get('/users', [AuthController::class, 'getUsers']);
     
     // freee連携API
     Route::get('/freee/auth-status', [FreeeController::class, 'getAuthStatus']);
@@ -39,7 +40,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/freee/map-employee-id', [FreeeController::class, 'mapEmployeeId']);
     Route::post('/freee/clock-in', [FreeeController::class, 'clockIn']);
     Route::post('/freee/clock-out', [FreeeController::class, 'clockOut']);
-    Route::get('/freee/payroll', [FreeeController::class, 'getPayroll']);
     
         // サービス記録API
         Route::prefix('service')->group(function () {

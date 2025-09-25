@@ -67,7 +67,7 @@ class AuthController extends Controller
     public function user(Request $request)
     {
         $user = $request->user();
-        
+
         return response()->json([
             'user' => [
                 'id' => $user->id,
@@ -77,5 +77,19 @@ class AuthController extends Controller
                 'role' => $user->role,
             ],
         ]);
+    }
+
+    /**
+     * ユーザー一覧取得（給与管理用）
+     */
+    public function getUsers(Request $request)
+    {
+        $users = User::where('role', 'helper')
+                    ->where('is_active', true)
+                    ->select('id', 'name', 'email', 'employee_id', 'role')
+                    ->orderBy('name')
+                    ->get();
+
+        return response()->json($users);
     }
 }

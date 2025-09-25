@@ -26,38 +26,19 @@
             </div>
           </div>
   
-          <!-- Summary Cards -->
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div class="card-enhanced overflow-hidden rounded-2xl hover:scale-105 transition-transform duration-300">
-              <div class="p-5">
-                <dt class="text-sm font-medium text-text-secondary truncate">
-                  総支給額
-                </dt>
-                <dd class="mt-1 text-3xl font-semibold text-text-primary">
-                  ¥{{ totalPayroll.toLocaleString() }}
-                </dd>
-              </div>
-            </div>
-            
-            <div class="card-enhanced overflow-hidden rounded-2xl hover:scale-105 transition-transform duration-300">
-              <div class="p-5">
-                <dt class="text-sm font-medium text-text-secondary truncate">
-                  サービス調整額
-                </dt>
-                <dd class="mt-1 text-3xl font-semibold text-primary-blue">
-                  ¥{{ totalAdjustment.toLocaleString() }}
-                </dd>
-              </div>
-            </div>
-            
-            <div class="card-enhanced overflow-hidden rounded-2xl hover:scale-105 transition-transform duration-300">
-              <div class="p-5">
-                <dt class="text-sm font-medium text-text-secondary truncate">
+          <!-- Summary Card -->
+          <div class="grid grid-cols-1 md:grid-cols-1 gap-6 mb-8">
+            <div class="card-enhanced overflow-hidden rounded-2xl">
+              <div class="p-6 text-center">
+                <dt class="text-lg font-medium text-text-secondary mb-2">
                   対象従業員数
                 </dt>
-                <dd class="mt-1 text-3xl font-semibold text-text-primary">
+                <dd class="text-4xl font-bold text-text-primary">
                   {{ payrollList.length }}名
                 </dd>
+                <p class="text-sm text-text-secondary mt-2">
+                  各従業員の詳細な給与情報は個別ページで確認できます
+                </p>
               </div>
             </div>
           </div>
@@ -74,56 +55,54 @@
               <li
                 v-for="payroll in payrollList"
                 :key="payroll.user_id"
-                class="cursor-pointer hover:bg-gray-50"
+                class="cursor-pointer hover:bg-gray-50 transition-colors duration-150"
                 @click="viewPayrollDetail(payroll.user_id, selectedMonth)"
               >
-                <div class="px-4 py-4 sm:px-6">
+                <div class="px-6 py-5 sm:px-8">
                   <div class="flex items-center justify-between">
                     <div class="flex items-center">
                       <div>
-                        <p class="text-sm font-medium text-text-primary">
+                        <p class="text-lg font-medium text-text-primary">
                           {{ payroll.employee_name }}
                         </p>
-                        <p class="text-sm text-text-secondary">
-                          基本給: ¥{{ payroll.base_salary?.toLocaleString() }}
+                        <p class="text-sm text-text-secondary mt-1">
+                          {{ formatMonth(selectedMonth) }}の給与詳細を確認
                         </p>
                       </div>
                     </div>
-                    
-                    <div class="flex items-center space-x-4">
-                      <div class="text-right">
-                        <p class="text-sm text-text-secondary">サービス調整</p>
-                        <p class="text-sm font-medium text-primary-blue">
-                          +¥{{ payroll.service_adjustments?.toLocaleString() }}
-                        </p>
-                      </div>
-                      
-                      <div class="text-right">
-                        <p class="text-sm text-text-secondary">総支給額</p>
-                        <p class="text-lg font-semibold text-text-primary">
-                          ¥{{ payroll.total_salary?.toLocaleString() }}
-                        </p>
-                      </div>
-                      
-                      <div class="text-primary-blue">
-                        →
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div class="mt-2">
-                    <div class="flex items-center text-sm text-text-secondary space-x-4">
-                      <span>総労働時間: {{ payroll.total_hours || 0 }}h</span>
-                      <span v-if="payroll.overtime_hours">
-                        残業: {{ payroll.overtime_hours }}h
-                      </span>
+
+                    <div class="text-primary-blue text-xl">
+                      →
                     </div>
                   </div>
                 </div>
               </li>
             </ul>
   
-            <div v-if="payrollList.length === 0" class="text-center py-12">
+            <!-- Loading State -->
+            <div v-if="loading" class="text-center py-12">
+              <div class="inline-flex items-center">
+                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-primary-blue" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span class="text-text-secondary">給与データを読み込み中...</span>
+              </div>
+            </div>
+
+            <!-- Error State -->
+            <div v-else-if="error" class="text-center py-12">
+              <div class="text-red-600 mb-2">{{ error }}</div>
+              <button
+                @click="loadPayrollData"
+                class="px-4 py-2 bg-primary-blue text-white rounded-md hover:bg-blue-700"
+              >
+                再読み込み
+              </button>
+            </div>
+
+            <!-- Empty State -->
+            <div v-else-if="payrollList.length === 0" class="text-center py-12">
               <p class="text-text-secondary">給与データがありません</p>
             </div>
           </div>
@@ -140,31 +119,50 @@
   
   const router = useRouter()
   const payrollStore = usePayrollStore()
-  
-  const selectedMonth = ref('2025-01')
+
+  const selectedMonth = ref('2025-10')
   const payrollList = ref([])
+  const loading = ref(false)
+  const error = ref('')
   
   const months = [
-    { value: '2025-01', label: '2025年1月' },
-    { value: '2024-12', label: '2024年12月' },
-    { value: '2024-11', label: '2024年11月' },
-    { value: '2024-10', label: '2024年10月' }
+    { value: '2025-10', label: '2025年10月' },
+    { value: '2025-09', label: '2025年9月' }
   ]
+
+  const formatMonth = (monthStr) => {
+    const [year, monthNum] = monthStr.split('-')
+    return `${year}年${monthNum}月`
+  }
   
-  const totalPayroll = computed(() => {
-    return payrollList.value.reduce((sum, payroll) => sum + (payroll.total_salary || 0), 0)
-  })
-  
-  const totalAdjustment = computed(() => {
-    return payrollList.value.reduce((sum, payroll) => sum + (payroll.service_adjustments || 0), 0)
-  })
+  // サマリーカード用（実際のデータは詳細ページで表示）
+  const totalPayroll = computed(() => 0)
+  const totalBaseSalary = computed(() => 0)
+  const totalAdjustment = computed(() => 0)
   
   const loadPayrollData = async () => {
+    loading.value = true
+    error.value = ''
+
+    console.log('=== 給与管理画面 従業員リスト表示 ===')
+
     try {
-      const data = await payrollStore.fetchAllPayrollData(selectedMonth.value)
-      payrollList.value = data
-    } catch (error) {
-      console.error('Failed to load payroll data:', error)
+      // 従業員データのみ取得（給与APIは呼び出さない）
+      await payrollStore.fetchEmployees()
+
+      // 従業員リストを表示用に変換（名前のみ）
+      payrollList.value = payrollStore.employees.map(employee => ({
+        user_id: employee.id,
+        employee_name: employee.name
+      }))
+
+      console.log('従業員リスト表示完了:', payrollList.value)
+    } catch (err) {
+      console.error('従業員データ取得エラー:', err)
+      error.value = `従業員データの読み込みに失敗しました: ${err.message}`
+      payrollList.value = []
+    } finally {
+      loading.value = false
     }
   }
   
