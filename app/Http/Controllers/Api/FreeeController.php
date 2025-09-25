@@ -422,4 +422,127 @@ class FreeeController extends Controller
         }
     }
 
+    /**
+     * freeeから従業員をインポートしてUsersテーブルに新規作成
+     */
+    public function importEmployeesFromFreee(Request $request)
+    {
+        $token = FreeeToken::first();
+
+        if (!$token) {
+            return response()->json([
+                'error' => 'freee認証が完了していません。',
+            ], 400);
+        }
+
+        try {
+            $accessToken = $token->getValidAccessToken();
+            if (!$accessToken) {
+                return response()->json([
+                    'error' => '有効なアクセストークンがありません。',
+                ], 400);
+            }
+            
+            Log::info('Starting employee import process', [
+                'company_id' => $token->company_id,
+                'user_id' => Auth::id()
+            ]);
+            
+            $employeesData = $this->freeeApiService->getEmployees($accessToken, $token->company_id);
+            $employees = $employeesData['employees'] ?? [];
+            
+            $importedCount = 0;
+            $skippedCount = 0;
+            $importedEmployees = [];
+            $skippedEmployees = [];
+            
+            foreach ($employees as $employee) {
+                $freeeEmployeeId = $employee['id'];
+                $displayName = $employee['display_name'] ?? null;
+                $employeeNum = $employee['num'] ?? null;
+                $email = $employee['email'] ?? null;
+                
+                // 既存ユーザーチェック（名前またはemployee_idで）
+                $existingUser = \App\Models\User::where('name', $displayName)
+                    ->orWhere('employee_id', $freeeEmployeeId)
+                    ->first();
+                
+                if ($existingUser) {
+                    $skippedCount++;
+                    $skippedEmployees[] = [
+                        'freee_id' => $freeeEmployeeId,
+                        'display_name' => $displayName,
+                        'num' => $employeeNum,
+                        'reason' => '既存ユーザー'
+                    ];
+                    continue;
+                }
+                
+                // 必須データのチェック
+                if (!$displayName) {
+                    $skippedCount++;
+                    $skippedEmployees[] = [
+                        'freee_id' => $freeeEmployeeId,
+                        'display_name' => $displayName,
+                        'num' => $employeeNum,
+                        'reason' => '名前が不明'
+                    ];
+                    continue;
+                }
+                
+                // 新しいユーザーを作成
+                $newUser = \App\Models\User::create([
+                    'name' => $displayName,
+                    'email' => $email ?: "{$freeeEmployeeId}@imported.local",
+                    'password' => bcrypt('password'), // デフォルトパスワード
+                    'employee_id' => $freeeEmployeeId,
+                    'role' => 'helper', // デフォルトはヘルパー
+                    'hire_date' => $employee['entry_date'] ?? now()->toDateString(),
+                ]);
+                
+                $importedCount++;
+                $importedEmployees[] = [
+                    'user_id' => $newUser->id,
+                    'name' => $newUser->name,
+                    'email' => $newUser->email,
+                    'employee_id' => $newUser->employee_id,
+                    'freee_display_name' => $displayName
+                ];
+                
+                Log::info('Imported new employee', [
+                    'user_id' => $newUser->id,
+                    'name' => $newUser->name,
+                    'freee_id' => $freeeEmployeeId
+                ]);
+            }
+            
+            Log::info('Employee import completed', [
+                'total_employees' => count($employees),
+                'imported_count' => $importedCount,
+                'skipped_count' => $skippedCount
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => "従業員インポートが完了しました。",
+                'imported_count' => $importedCount,
+                'skipped_count' => $skippedCount,
+                'total_employees' => count($employees),
+                'imported_employees' => $importedEmployees,
+                'skipped_employees' => $skippedEmployees
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Failed to import employees from freee', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'error' => '従業員インポートに失敗しました。',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
 }

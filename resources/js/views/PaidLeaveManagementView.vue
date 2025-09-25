@@ -175,7 +175,6 @@
   const goToApproval = () => {
     router.push('/admin/paid-leave-approval')
   }
-
   
   onMounted(() => {
     loadEmployeeLeaveStatus()

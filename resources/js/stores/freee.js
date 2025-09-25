@@ -157,6 +157,20 @@ export const useFreeeStore = defineStore('freee', () => {
     }
   }
 
+  // 従業員インポート
+  const importEmployeesFromFreee = async () => {
+    try {
+      console.log('Attempting to import employees from freee...')
+      const response = await api.post('/freee/import-employees')
+      console.log('Employee import successful:', response.data)
+      return response.data
+    } catch (error) {
+      console.error('Failed to import employees:', error)
+      console.error('Error response:', error.response?.data)
+      throw error
+    }
+  }
+
   return {
     isAuthenticated,
     workStatus,
@@ -170,6 +184,7 @@ export const useFreeeStore = defineStore('freee', () => {
     fetchPayrollData,
     updateEmployeeIds,
     fetchEmployees,
-    checkAuthStatus
+    checkAuthStatus,
+    importEmployeesFromFreee
   }
 })

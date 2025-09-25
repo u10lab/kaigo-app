@@ -154,6 +154,13 @@
                     >
                       {{ isFetchingEmployees ? '取得中...' : '従業員一覧' }}
                     </button>
+                    <button
+                      @click="handleImportEmployees"
+                      :disabled="isImportingEmployees"
+                      class="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-xl hover:from-purple-600 hover:to-pink-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {{ isImportingEmployees ? 'インポート中...' : '従業員インポート' }}
+                    </button>
                   </div>
                 </div>
                 
@@ -225,6 +232,7 @@ const freeeAuthMessage = ref(null)
 // 従業員ID更新関連
 const isUpdatingEmployees = ref(false)
 const isFetchingEmployees = ref(false)
+const isImportingEmployees = ref(false)
 const employeeUpdateResult = ref(null)
 
 // 認証状態の確認とURLパラメータから認証結果を確認
@@ -333,6 +341,33 @@ const handleFetchEmployees = async () => {
     }
   } finally {
     isFetchingEmployees.value = false
+  }
+}
+
+// 従業員インポート
+const handleImportEmployees = async () => {
+  isImportingEmployees.value = true
+  employeeUpdateResult.value = null
+  
+  try {
+    const result = await freeeStore.importEmployeesFromFreee()
+    
+    employeeUpdateResult.value = {
+      type: 'success',
+      title: '従業員インポート完了',
+      message: `インポート: ${result.imported_count}名、スキップ: ${result.skipped_count}名（全${result.total_employees}名中）`,
+      importedEmployees: result.imported_employees || [],
+      skippedEmployees: result.skipped_employees || []
+    }
+  } catch (error) {
+    console.error('Failed to import employees:', error)
+    employeeUpdateResult.value = {
+      type: 'error',
+      title: '従業員インポートエラー',
+      message: error.response?.data?.error || '従業員のインポートに失敗しました。'
+    }
+  } finally {
+    isImportingEmployees.value = false
   }
 }
 
