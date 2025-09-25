@@ -33,35 +33,52 @@
 
       <!-- Application Form -->
       <form @submit.prevent="submitApplication" class="space-y-6">
-        <!-- Date Range -->
+        <!-- Date Selection -->
         <div class="bg-white rounded-lg shadow-md p-6">
-          <h2 class="text-lg font-semibold text-text-primary mb-4">取得期間</h2>
-          
+          <h2 class="text-lg font-semibold text-text-primary mb-4">取得日</h2>
+
           <div class="space-y-4">
             <div>
               <label class="block text-sm font-medium text-text-primary mb-2">
-                開始日 <span class="text-red-500">*</span>
+                有給休暇取得日 <span class="text-red-500">*</span>
               </label>
               <input
-                v-model="form.start_date"
+                v-model="form.date"
                 type="date"
                 :min="minDate"
                 required
+                @input="updateFormDates"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
               />
             </div>
-            
-            <div>
-              <label class="block text-sm font-medium text-text-primary mb-2">
-                終了日 <span class="text-red-500">*</span>
-              </label>
-              <input
-                v-model="form.end_date"
-                type="date"
-                :min="form.start_date || minDate"
-                required
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
-              />
+
+            <!-- 半日休暇オプション -->
+            <div v-if="form.date" class="bg-blue-50 p-4 rounded-lg">
+              <h3 class="text-sm font-medium text-blue-800 mb-3">半日休暇オプション</h3>
+              <div class="space-y-2">
+                <label class="flex items-center">
+                  <input
+                    v-model="form.half_day"
+                    type="checkbox"
+                    class="mr-2"
+                  />
+                  <span class="text-sm text-blue-700">
+                    半日休暇（午前または午後）
+                  </span>
+                </label>
+                <div v-if="form.half_day" class="ml-6">
+                  <label class="block text-sm font-medium text-blue-700 mb-1">
+                    休暇時間
+                  </label>
+                  <select
+                    v-model="form.half_day_period"
+                    class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="morning">午前（9:00-12:00）</option>
+                    <option value="afternoon">午後（13:00-17:00）</option>
+                  </select>
+                </div>
+              </div>
             </div>
             
             <div v-if="calculatedDays > 0" class="bg-blue-50 p-3 rounded-md">
@@ -129,7 +146,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePaidLeaveStore } from '../stores/paidLeave'
 import { useAuthStore } from '../stores/auth'
@@ -143,9 +160,12 @@ const loading = ref(false)
 const validationErrors = ref([])
 
 const form = ref({
-  start_date: '',
-  end_date: '',
-  reason: ''
+  date: '',
+  start_date: '', // API用に内部で設定
+  end_date: '', // API用に内部で設定
+  reason: '',
+  half_day: false,
+  half_day_period: 'morning'
 })
 
 const minDate = computed(() => {
@@ -153,47 +173,40 @@ const minDate = computed(() => {
 })
 
 const calculatedDays = computed(() => {
-  if (!form.value.start_date || !form.value.end_date) return 0
-  
-  const startDate = new Date(form.value.start_date)
-  const endDate = new Date(form.value.end_date)
-  
-  if (startDate > endDate) return 0
-  
-  const diffTime = endDate.getTime() - startDate.getTime()
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1
-  
-  return diffDays
+  if (!form.value.date) return 0
+
+  // 半日休暇の場合は0.5日、それ以外は1日
+  return form.value.half_day ? 0.5 : 1
 })
 
+// 日付選択時にstart_dateとend_dateを自動設定
+const updateFormDates = () => {
+  if (form.value.date) {
+    form.value.start_date = form.value.date
+    form.value.end_date = form.value.date
+  }
+}
+
 const isFormValid = computed(() => {
-  return form.value.start_date &&
-         form.value.end_date &&
+  return form.value.date &&
          form.value.reason.trim() &&
          calculatedDays.value > 0
 })
 
 const validateForm = () => {
   validationErrors.value = []
-  
-  if (!form.value.start_date) {
-    validationErrors.value.push('開始日を入力してください')
+
+  if (!form.value.date) {
+    validationErrors.value.push('有給休暇取得日を入力してください')
   }
-  
-  if (!form.value.end_date) {
-    validationErrors.value.push('終了日を入力してください')
-  }
-  
-  if (form.value.start_date && form.value.end_date) {
-    const startDate = new Date(form.value.start_date)
-    const endDate = new Date(form.value.end_date)
-    
-    if (startDate > endDate) {
-      validationErrors.value.push('終了日は開始日以降を選択してください')
-    }
-    
-    if (startDate < new Date()) {
-      validationErrors.value.push('開始日は今日以降を選択してください')
+
+  if (form.value.date) {
+    const selectedDate = new Date(form.value.date)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    if (selectedDate < today) {
+      validationErrors.value.push('取得日は今日以降を選択してください')
     }
   }
   
@@ -210,15 +223,20 @@ const validateForm = () => {
 
 const submitApplication = async () => {
   if (!validateForm()) return
-  
+
+  // 日付を自動設定
+  updateFormDates()
+
   loading.value = true
   validationErrors.value = []
-  
+
   try {
     const applicationData = {
       start_date: form.value.start_date,
       end_date: form.value.end_date,
-      reason: form.value.reason.trim()
+      reason: form.value.reason.trim(),
+      half_day: form.value.half_day,
+      half_day_period: form.value.half_day_period
     }
     
     // 独自アプリで申請を送信

@@ -55,13 +55,6 @@
             </button>
           </div>
   
-          <div class="mt-8 border-t pt-6">
-            <h3 class="text-sm font-medium text-text-primary mb-3">テストアカウント</h3>
-            <div class="space-y-2 text-xs text-text-secondary">
-              <p><strong>管理者:</strong> admin@test.com / password</p>
-              <p><strong>ヘルパー:</strong> helper1@test.com / password</p>
-            </div>
-          </div>
         </form>
       </div>
     </div>
@@ -101,20 +94,7 @@
         error.value = result.message || 'ログインに失敗しました'
       }
     } catch (err) {
-      // デモ用のモックログイン処理
-      if (form.value.email === 'admin@test.com' && form.value.password === 'password') {
-        authStore.user = { id: 1, email: 'admin@test.com', name: '管理者', role: 'admin' }
-        authStore.token = 'mock-admin-token'
-        localStorage.setItem('token', 'mock-admin-token')
-        router.push('/admin')
-      } else if (form.value.email === 'helper1@test.com' && form.value.password === 'password') {
-        authStore.user = { id: 2, email: 'helper1@test.com', name: '山田太郎', role: 'helper' }
-        authStore.token = 'mock-helper-token'
-        localStorage.setItem('token', 'mock-helper-token')
-        router.push('/helper')
-      } else {
-        error.value = 'メールアドレスまたはパスワードが正しくありません'
-      }
+      error.value = err.response?.data?.message || 'ログインに失敗しました'
     } finally {
       loading.value = false
     }

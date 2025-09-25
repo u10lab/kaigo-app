@@ -340,7 +340,7 @@ export const usePaidLeaveStore = defineStore('paidLeave', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.post('/paid-leave/approve-via-freee', {
+      const response = await api.post('/paid-leave/approve', {
         application_id: applicationId,
         approver_comment: comment
       })

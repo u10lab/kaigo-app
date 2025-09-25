@@ -124,7 +124,7 @@
                   class="hover:bg-gray-50"
                 >
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-text-primary">
-                    {{ application.user_name || 'Unknown' }}
+                    {{ application.user?.name || 'Unknown' }}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">
                     {{ formatDateRange(application.start_date, application.end_date) }}

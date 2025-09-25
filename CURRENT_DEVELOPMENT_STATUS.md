@@ -164,12 +164,23 @@
   - freee.js: updateEmployeeIds, fetchEmployees
   - AdminDashboardView: 従業員管理UI
 
-#### 3.1.2 サービス記録API統合（未完了） ⏳
-- **ServiceStore**: モックデータ使用中
-- **API連携**: 未実装
+#### 3.1.2 サービス記録API統合完了 ✅
+- **ServiceStore**: API統合済み（フォールバック機能付き）
+- **API連携**: 実装済み
   - fetchClients, fetchServiceTypes
   - startService, endService
-- **フロントエンド統合**: 未実施
+  - fetchServiceRecords, fetchCurrentServiceStatus
+- **フロントエンド統合**: 完了
+
+#### 3.1.3 有給休暇管理API統合完了 ✅
+- **PaidLeaveStore**: API統合済み
+- **API連携**: 実装済み
+  - fetchPaidLeaveStatus
+  - applyPaidLeave
+  - fetchApplications
+  - approveApplication, rejectApplication
+  - fetchAnnualLeaveCheck
+- **フロントエンド統合**: 完了
 
 ## 📊 実装済みAPI一覧
 
@@ -178,14 +189,17 @@
 2. **freee連携API**: 8つのエンドポイント（認証・打刻・データ取得・従業員管理）
 3. **サービス記録API**: 6つのエンドポイント（開始・終了・記録取得）
 4. **給与計算API**: `/api/payroll/calculate`, `/api/payroll/recalculate`
-5. **有給休暇管理API**: 5つのエンドポイント（状況取得・使用記録・年5日取得義務チェック・付与処理）
+5. **有給休暇管理API**: 6つのエンドポイント（状況取得・申請・承認・却下・年5日取得義務チェック）
 6. **CSV出力API**: `/api/export/care-insurance/{month}`, `/api/export/care-insurance/{month}/stats`
 
 ### ✅ フロントエンド統合完了
 1. **freee API統合**: 完全動作（認証・従業員管理・UI統合）
+2. **サービス記録API統合**: 完全動作（フォールバック機能付き）
+3. **有給休暇管理API統合**: 完全動作
 
 ### 🔄 フロントエンド統合（未完了）
-1. **サービス記録API統合**: 未実装（モックデータ使用中）
+1. **給与計算API統合**: 未完了（freeeトークン処理未実装のため失敗時モック使用）
+2. **CSV出力API統合**: 未完了（失敗時モック使用）
 
 ### 📁 作成済みファイル一覧
 
@@ -199,24 +213,29 @@
 ├── app/Http/Controllers/Api/PaidLeaveController.php ✅
 └── app/Http/Controllers/Api/ExportController.php ✅
 
-✅ モデル (6ファイル)
+✅ モデル (8ファイル)
 ├── app/Models/User.php ✅
 ├── app/Models/Client.php ✅
 ├── app/Models/ServiceType.php ✅
 ├── app/Models/ServiceRecord.php ✅
 ├── app/Models/PaidLeaveRecord.php ✅
+├── app/Models/PaidLeaveApplication.php ✅
+├── app/Models/WorkRecord.php ✅
 └── app/Models/FreeeToken.php ✅
 
-✅ サービス (1ファイル)
-└── app/Services/FreeeApiService.php ✅
+✅ サービス (2ファイル)
+├── app/Services/FreeeApiService.php ✅
+└── app/Services/PaidLeaveService.php ✅
 
-✅ データベース (8テーブル)
+✅ データベース (10テーブル)
 ├── users ✅
 ├── freee_tokens ✅
 ├── clients ✅
 ├── service_types ✅
 ├── service_records ✅
 ├── paid_leave_records ✅
+├── paid_leave_applications ✅
+├── work_records ✅
 ├── overtime_alerts ✅
 └── sessions, cache, jobs, password_reset_tokens ✅
 ```
@@ -231,18 +250,18 @@
 ├── resources/js/stores/ (5ファイル)
 │   ├── auth.js ✅
 │   ├── freee.js ✅
-│   ├── paidLeave.js ✅
-│   ├── payroll.js ✅
-│   └── service.js ✅
+│   ├── paidLeave.js ✅ (API統合済み)
+│   ├── payroll.js ⚠️ (失敗時モック使用)
+│   └── service.js ✅ (API統合済み)
 ├── resources/js/views/ (11ファイル)
 │   ├── LoginView.vue ✅
 │   ├── HelperMainView.vue ✅
 │   ├── ServiceStartView.vue ✅
 │   ├── AdminDashboardView.vue ✅
-│   ├── CsvExportView.vue ✅
+│   ├── CsvExportView.vue ⚠️ (失敗時モック使用)
 │   ├── PaidLeaveStatusView.vue ✅
-│   ├── PayrollmanagementView.vue ✅
-│   ├── PayrollDetailView.vue ✅
+│   ├── PayrollmanagementView.vue ⚠️ (失敗時モック使用)
+│   ├── PayrollDetailView.vue ⚠️ (失敗時モック使用)
 │   ├── PaidLeaveManagementView.vue ✅
 │   ├── PaidLeaveDetailView.vue ✅
 │   └── ServiceRecordsView.vue ✅
@@ -269,15 +288,15 @@
 5. **ビルドツール**: Vite 5.x ✅
 6. **言語**: JavaScript ES2023（TypeScript不使用）✅
 
-### 📊 機能実装状況
-| 機能 | フロントエンド | バックエンドAPI | データベース | 状況 |
-|------|---------------|----------------|-------------|------|
-| 認証システム | ✅ 完了 | ✅ 完了 | ✅ 完了 | 完了 |
-| freee連携 | ✅ 完了 | ✅ 完了 | ✅ 完了 | 完了 |
-| サービス記録 | ✅ モック | ✅ 完了 | ✅ 完了 | API実装完了 |
-| 給与計算 | ✅ モック | ✅ 完了 | ✅ 完了 | API実装完了 |
-| 有給休暇管理 | ✅ モック | ✅ 完了 | ✅ 完了 | API実装完了 |
-| CSV出力 | ✅ モック | ✅ 完了 | ✅ 完了 | API実装完了 |
+### 📊 機能実装状況（正確版）
+| 機能 | フロントエンド | バックエンドAPI | データベース | 統合状況 |
+|------|---------------|----------------|-------------|----------|
+| 認証システム | ✅ 完了 | ✅ 完了 | ✅ 完了 | ✅ 完了 |
+| freee連携 | ✅ 完了 | ✅ 完了 | ✅ 完了 | ✅ 完了 |
+| サービス記録 | ✅ 完了 | ✅ 完了 | ✅ 完了 | ✅ 完了 |
+| 有給休暇管理 | ✅ 完了 | ✅ 完了 | ✅ 完了 | ✅ 完了 |
+| 給与計算 | ⚠️ 一部 | ✅ 完了 | ✅ 完了 | ⚠️ 未完了 |
+| CSV出力 | ⚠️ 一部 | ✅ 完了 | ✅ 完了 | ⚠️ 未完了 |
 
 ## 🔄 現在のブランチ状況
 
@@ -297,22 +316,16 @@
 ### Phase 3.1: フロントエンド・バックエンド統合（進行中）
 #### ✅ 完了済み
 1. **freee API統合**: 完全動作（認証・従業員管理・UI統合）
+2. **サービス記録API統合**: 完全動作（フォールバック機能付き）
+3. **有給休暇管理API統合**: 完全動作
 
 #### 🔄 残りの統合作業
-1. **サービス記録API統合**
-   - ServiceStoreのAPI連携実装
-   - サービス開始・終了のAPI連携
+1. **給与計算API統合**
+   - freeeトークン処理の実装
+   - PayrollStoreのエラーハンドリング改善
 
-2. **給与計算API統合**
-   - PayrollStoreのAPI連携実装
-   - 給与計算画面のAPI連携
-
-3. **有給休暇管理API統合**
-   - PaidLeaveStoreのAPI連携実装
-   - 有給休暇管理画面のAPI連携
-
-4. **CSV出力API統合**
-   - CSV出力画面のAPI連携
+2. **CSV出力API統合**
+   - CsvExportViewのAPI連携実装
    - ダウンロード機能の実装
 
 5. **エラーハンドリング強化**
@@ -367,11 +380,11 @@
 ### 全体進捗
 - **Phase 1**: 環境構築・認証基盤 ✅ 100%
 - **Phase 2**: バックエンドAPI実装 ✅ 100%
-- **Phase 3**: フロントエンド・バックエンド統合 🔄 20%
+- **Phase 3**: フロントエンド・バックエンド統合 🔄 75%
 - **Phase 4**: UI/UX調整・レスポンシブ対応 ⏳ 0%
 - **Phase 5**: テスト・デプロイ ⏳ 0%
 
-### 総合進捗率: 44%完了
+### 総合進捗率: 75%完了
 
 ## 📋 次回開発開始時の手順
 
@@ -387,11 +400,9 @@ git branch
 - 最新のmainブランチをプル
 
 ### 3. Phase 3.1 フロントエンド・バックエンド統合継続
-1. **サービス記録API統合**（最優先）
-2. **PayrollStoreのAPI連携実装**
-3. **PaidLeaveStoreのAPI連携実装**
-4. **CSV出力API統合**
-5. **エラーハンドリング強化**
+1. **給与計算API統合**（最優先）
+2. **CSV出力API統合**
+3. **エラーハンドリング強化**
 
 ## 🔍 重要なファイル
 
@@ -412,6 +423,12 @@ git branch
 3. **API実装**: バックエンドAPI実装が完了しているため、フロントエンド統合が最優先です
 4. **認証フロー**: Laravel Sanctumを使用したAPI認証が実装済みです
 
+## ⚠️ 未解決の問題
+
+1. **給与計算機能**: freeeトークン処理未実装のため、API失敗時にモックデータを使用
+2. **CSV出力機能**: API失敗時にモックデータを使用
+3. **データベースマイグレーション**: usersテーブルの重複定義
+
 ## 🎯 期待効果（requirement.md準拠）
 
 ### 定量指標
@@ -430,6 +447,6 @@ git branch
 
 ---
 
-**最終更新**: 2025年9月23日  
-**現在の進捗**: Phase 3.1 部分完了（freee API統合・サービス記録API統合完了）  
-**次のステップ**: Phase 3.1 継続（給与計算・有給休暇・CSV出力API統合）
+**最終更新**: 2025年9月25日  
+**現在の進捗**: Phase 3.1 部分完了（freee API・サービス記録・有給休暇管理統合完了）  
+**次のステップ**: Phase 3.1 継続（給与計算・CSV出力API統合）

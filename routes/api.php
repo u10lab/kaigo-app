@@ -71,11 +71,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/reject', [PaidLeaveController::class, 'reject']);
         Route::get('/annual-check', [PaidLeaveController::class, 'getAnnualLeaveCheck']);
         
-        // freee API統合ルート
-        Route::post('/sync-employees-from-freee', [PaidLeaveController::class, 'syncEmployeesFromFreee']);
-        Route::post('/approve-and-register-to-freee', [PaidLeaveController::class, 'approveAndRegisterToFreee']);
-        Route::get('/accurate-remaining-days', [PaidLeaveController::class, 'getAccurateRemainingDays']);
-        Route::get('/records-from-freee', [PaidLeaveController::class, 'getPaidLeaveRecordsFromFreee']);
         
     });
     

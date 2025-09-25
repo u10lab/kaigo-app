@@ -67,6 +67,8 @@ class PaidLeaveController extends Controller
             'start_date' => 'required|date|after_or_equal:today',
             'end_date' => 'required|date|after_or_equal:start_date',
             'reason' => 'required|string|max:500',
+            'half_day' => 'boolean',
+            'half_day_period' => 'nullable|in:morning,afternoon',
         ]);
 
         try {
@@ -76,6 +78,11 @@ class PaidLeaveController extends Controller
             $startDate = \Carbon\Carbon::parse($request->start_date);
             $endDate = \Carbon\Carbon::parse($request->end_date);
             $requestedDays = $startDate->diffInDays($endDate) + 1;
+            
+            // 半日休暇の場合は0.5日として計算
+            if ($request->half_day && $startDate->isSameDay($endDate)) {
+                $requestedDays = 0.5;
+            }
 
             // 有給休暇残日数の確認
             $status = $this->paidLeaveService->getPaidLeaveStatus($userId);
@@ -105,6 +112,8 @@ class PaidLeaveController extends Controller
                 'reason' => $request->reason,
                 'leave_type' => 'paid_leave',
                 'status' => 'pending',
+                'half_day' => $request->half_day ?? false,
+                'half_day_period' => $request->half_day_period,
             ]);
 
             Log::info('Paid leave application submitted', [
@@ -398,59 +407,7 @@ class PaidLeaveController extends Controller
         }
     }
 
-    /**
-     * freeeから従業員マスタを同期
-     */
-    public function syncEmployeesFromFreee(Request $request)
-    {
-        try {
-            $result = $this->paidLeaveService->syncEmployeesFromFreee();
-            
-            return response()->json([
-                'success' => true,
-                'message' => '従業員マスタの同期が完了しました。',
-                'data' => $result
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Sync employees from freee failed', [
-                'error' => $e->getMessage()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'message' => '従業員マスタの同期に失敗しました。',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
 
-    /**
-     * 正確な残日数を取得（freee実績を含む）
-     */
-    public function getAccurateRemainingDays(Request $request)
-    {
-        $userId = $request->input('user_id', Auth::id());
-        $fiscalYear = $request->input('fiscal_year', date('Y'));
 
-        try {
-            $result = $this->paidLeaveService->getAccurateRemainingDays($userId, $fiscalYear);
-            
-            return response()->json([
-                'success' => true,
-                'data' => $result
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Get accurate remaining days failed', [
-                'user_id' => $userId,
-                'fiscal_year' => $fiscalYear,
-                'error' => $e->getMessage()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'message' => '残日数の取得に失敗しました。',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
+
 }

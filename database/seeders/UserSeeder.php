@@ -30,7 +30,6 @@ class UserSeeder extends Seeder
             'email' => 'helper1@test.com',
             'employee_id' => 'HELPER001',
             'password' => Hash::make('password'),
-            'pin' => '1234',
             'role' => 'helper',
             'is_active' => true,
         ]);
@@ -40,7 +39,6 @@ class UserSeeder extends Seeder
             'email' => 'helper2@test.com',
             'employee_id' => 'HELPER002',
             'password' => Hash::make('password'),
-            'pin' => '5678',
             'role' => 'helper',
             'is_active' => true,
         ]);
@@ -50,7 +48,6 @@ class UserSeeder extends Seeder
             'email' => 'helper3@test.com',
             'employee_id' => 'HELPER003',
             'password' => Hash::make('password'),
-            'pin' => '9012',
             'role' => 'helper',
             'is_active' => true,
         ]);

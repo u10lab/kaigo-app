@@ -7,6 +7,7 @@ use App\Models\PaidLeaveRecord;
 use App\Models\PaidLeaveApplication;
 use App\Models\FreeeToken;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class PaidLeaveService
 {
@@ -334,6 +335,71 @@ class PaidLeaveService
     }
 
     /**
+     * 有給休暇申請を承認してfreeeに登録
+     */
+    public function approveAndRegisterToFreee(int $applicationId): array
+    {
+        try {
+            $application = PaidLeaveApplication::find($applicationId);
+            if (!$application) {
+                throw new \Exception('申請が見つかりません');
+            }
+
+            $user = $application->user;
+            if (!$user || !$user->employee_id) {
+                throw new \Exception('従業員IDが設定されていません');
+            }
+
+            // 1. ローカルで申請を承認
+            $application->update([
+                'status' => 'approved',
+                'approved_at' => now(),
+                'approved_by' => Auth::id()
+            ]);
+
+            // 2. 有給休暇残日数を更新
+            $this->updatePaidLeaveUsage($user->id, $application->requested_days);
+
+            // 3. freee APIに勤怠記録として登録（期間の各日に対して）
+            $startDate = \Carbon\Carbon::parse($application->start_date);
+            $endDate = \Carbon\Carbon::parse($application->end_date);
+            
+            $freeeResults = [];
+            $currentDate = $startDate->copy();
+            
+            while ($currentDate->lte($endDate)) {
+                // 土日をスキップ
+                if ($currentDate->isWeekday()) {
+                    // 半日休暇対応：申請期間が1日で半日の場合は0.5、それ以外は1.0
+                    $isHalfDay = $startDate->isSameDay($endDate) && $application->half_day;
+                    $days = $isHalfDay ? 0.5 : 1.0;
+                    $result = $this->registerSingleDayToFreee($user->employee_id, $currentDate->format('Y-m-d'), $days);
+                    $freeeResults[] = $result;
+                }
+                $currentDate->addDay();
+            }
+
+            return [
+                'success' => true,
+                'application' => $application,
+                'freee_results' => $freeeResults,
+                'message' => '有給休暇申請を承認し、freeeに登録しました'
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Approve and register paid leave to freee failed', [
+                'application_id' => $applicationId,
+                'error' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
      * 正確な残日数を計算（freeeの実績を含む）
      */
     public function getAccurateRemainingDays(int $userId, int $fiscalYear = null): array
@@ -455,7 +521,7 @@ class PaidLeaveService
     /**
      * 承認された有給休暇をfreee勤怠APIに登録
      */
-    public function registerPaidLeaveToFreee(PaidLeaveApplication $application): void
+    public function registerPaidLeaveToFreee(PaidLeaveApplication $application): array
     {
         try {
             $user = $application->user;
@@ -464,30 +530,44 @@ class PaidLeaveService
                     'user_id' => $user->id,
                     'application_id' => $application->id
                 ]);
-                return;
+                return [
+                    'success' => false,
+                    'error' => '従業員IDが設定されていません'
+                ];
             }
 
             $token = FreeeToken::first();
             if (!$token) {
                 Log::warning('Cannot register paid leave to freee: no token found');
-                return;
+                return [
+                    'success' => false,
+                    'error' => 'freee APIトークンが見つかりません'
+                ];
             }
 
             $accessToken = $token->getValidAccessToken();
             if (!$accessToken) {
                 Log::warning('Cannot register paid leave to freee: no valid access token');
-                return;
+                return [
+                    'success' => false,
+                    'error' => '有効なfreee APIアクセストークンがありません'
+                ];
             }
 
             // 申請期間の各日付に対してfreee勤怠APIに登録
             $startDate = \Carbon\Carbon::parse($application->start_date);
             $endDate = \Carbon\Carbon::parse($application->end_date);
             
+            $freeeResults = [];
             $currentDate = $startDate->copy();
             while ($currentDate->lte($endDate)) {
                 // 土日をスキップ
                 if ($currentDate->isWeekday()) {
-                    $this->registerSingleDayToFreee($accessToken, $user->employee_id, $currentDate->format('Y-m-d'));
+                    // 半日休暇対応：申請期間が1日で半日の場合は0.5、それ以外は1.0
+                    $isHalfDay = $startDate->isSameDay($endDate) && $application->half_day;
+                    $days = $isHalfDay ? 0.5 : 1.0;
+                    $result = $this->registerSingleDayToFreee($user->employee_id, $currentDate->format('Y-m-d'), $days);
+                    $freeeResults[] = $result;
                 }
                 $currentDate->addDay();
             }
@@ -497,8 +577,16 @@ class PaidLeaveService
                 'user_id' => $user->id,
                 'employee_id' => $user->employee_id,
                 'start_date' => $application->start_date,
-                'end_date' => $application->end_date
+                'end_date' => $application->end_date,
+                'freee_results' => $freeeResults
             ]);
+            
+            return [
+                'success' => true,
+                'application' => $application,
+                'freee_results' => $freeeResults,
+                'message' => '有給休暇申請を承認し、freeeに登録しました'
+            ];
 
         } catch (\Exception $e) {
             Log::error('Failed to register paid leave to freee', [
@@ -506,22 +594,91 @@ class PaidLeaveService
                 'user_id' => $application->user_id,
                 'error' => $e->getMessage()
             ]);
+            
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
         }
     }
 
     /**
      * 単一日の有給休暇をfreee勤怠APIに登録
      */
-    private function registerSingleDayToFreee(string $accessToken, int $employeeId, string $date): void
+    private function registerSingleDayToFreee(int $employeeId, string $date, float $days = 1.0): array
     {
         try {
-            $this->freeeApiService->registerPaidLeaveToAttendance($accessToken, $employeeId, $date);
+            $token = FreeeToken::first();
+            if (!$token) {
+                Log::warning('Cannot register paid leave to freee: no token found');
+                throw new \Exception('freee APIトークンが見つかりません。');
+            }
+
+            $accessToken = $token->getValidAccessToken();
+            if (!$accessToken) {
+                Log::warning('Cannot register paid leave to freee: no valid access token');
+                throw new \Exception('有効なfreee APIアクセストークンがありません。');
+            }
+
+            $result = $this->freeeApiService->registerPaidLeave($accessToken, $employeeId, $date, $days);
+            
+            Log::info('Paid leave registered to freee', [
+                'employee_id' => $employeeId,
+                'date' => $date,
+                'freee_response' => $result
+            ]);
+            
+            return $result;
         } catch (\Exception $e) {
             Log::error('Failed to register single day to freee', [
                 'employee_id' => $employeeId,
                 'date' => $date,
                 'error' => $e->getMessage()
             ]);
+            throw $e; // 例外を再スローして上位で処理
+        }
+    }
+
+    /**
+     * 有給休暇使用日数を更新
+     */
+    private function updatePaidLeaveUsage(int $userId, float $usedDays): void
+    {
+        try {
+            $currentYear = now()->year;
+            
+            // 現在の年度の有給休暇レコードを取得または作成
+            $paidLeaveRecord = PaidLeaveRecord::firstOrCreate(
+                [
+                    'user_id' => $userId,
+                    'fiscal_year' => $currentYear
+                ],
+                [
+                    'granted_days' => 0,
+                    'used_days' => 0,
+                    'remaining_days' => 0,
+                    'grant_date' => now(),
+                    'expiry_date' => now()->addYear(),
+                ]
+            );
+
+            // 使用日数を更新
+            $paidLeaveRecord->increment('used_days', $usedDays);
+
+            Log::info('Paid leave usage updated', [
+                'user_id' => $userId,
+                'year' => $currentYear,
+                'used_days' => $usedDays,
+                'total_used_days' => $paidLeaveRecord->used_days
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to update paid leave usage', [
+                'user_id' => $userId,
+                'used_days' => $usedDays,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
         }
     }
 }

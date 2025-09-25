@@ -24,7 +24,6 @@ class User extends Authenticatable
         'employee_id',
         'hire_date',
         'password',
-        'pin',
         'role',
         'is_active',
     ];
@@ -37,7 +36,6 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
-        'pin',
     ];
 
     /**

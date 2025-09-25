@@ -25,6 +25,8 @@ class PaidLeaveApplication extends Model
         'rejected_at',
         'freee_registered',
         'freee_absence_id',
+        'half_day',
+        'half_day_period',
     ];
 
     protected function casts(): array
@@ -35,6 +37,7 @@ class PaidLeaveApplication extends Model
             'approved_at' => 'datetime',
             'rejected_at' => 'datetime',
             'freee_registered' => 'boolean',
+            'half_day' => 'boolean',
         ];
     }
 
