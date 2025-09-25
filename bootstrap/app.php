@@ -15,6 +15,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->api(prepend: [
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
         ]);
+        
+        // 認証ミドルウェアの設定
+        $middleware->redirectGuestsTo(function () {
+            return '/login';
+        });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

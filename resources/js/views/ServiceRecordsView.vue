@@ -25,6 +25,17 @@
               </select>
               
               <select
+                v-model="filters.employeeId"
+                @change="loadServiceRecords"
+                class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-blue focus:border-primary-blue"
+              >
+                <option value="">全従業員</option>
+                <option v-for="employee in employees" :key="employee.id" :value="employee.id">
+                  {{ employee.name }}
+                </option>
+              </select>
+              
+              <select
                 v-model="filters.clientId"
                 @change="loadServiceRecords"
                 class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-blue focus:border-primary-blue"
@@ -189,26 +200,24 @@
   import { ref, computed, onMounted } from 'vue'
   import { useServiceStore } from '../stores/service'
   import Navigation from '../components/Navigation.vue'
+  import api from '../services/api'
   
   const serviceStore = useServiceStore()
   
   const filters = ref({
     month: 'all',
+    employeeId: '',
     clientId: '',
     serviceType: ''
   })
   
   const serviceRecords = ref([])
+  const employees = ref([])
   
   const months = [
     { value: 'all', label: '全期間' },
-    { value: '2025-01', label: '2025年1月' },
-    { value: '2024-12', label: '2024年12月' },
-    { value: '2024-11', label: '2024年11月' },
-    { value: '2024-10', label: '2024年10月' },
-    { value: '2024-09', label: '2024年9月' },
-    { value: '2024-08', label: '2024年8月' },
-    { value: '2024-07', label: '2024年7月' }
+    { value: '2025-10', label: '2025年10月' },
+    { value: '2025-09', label: '2025年9月' }
   ]
   
   const clients = computed(() => serviceStore.clients)
@@ -216,6 +225,11 @@
   
   const filteredRecords = computed(() => {
     let records = serviceRecords.value
+    
+    if (filters.value.employeeId) {
+      const employee = employees.value.find(e => e.id == filters.value.employeeId)
+      records = records.filter(record => record.employee_name === employee?.name)
+    }
     
     if (filters.value.clientId) {
       const client = clients.value.find(c => c.id === filters.value.clientId)
@@ -316,7 +330,18 @@
     window.URL.revokeObjectURL(url)
   }
   
+  const fetchEmployees = async () => {
+    try {
+      const response = await api.get('/users')
+      employees.value = response.data.filter(user => user.role !== 'admin') // 管理者以外を従業員として表示
+    } catch (error) {
+      console.error('Failed to fetch employees:', error)
+      employees.value = []
+    }
+  }
+
   onMounted(async () => {
+    await fetchEmployees()
     await serviceStore.fetchClients()
     await serviceStore.fetchServiceTypes()
     loadServiceRecords()
