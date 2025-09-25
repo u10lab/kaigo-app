@@ -11,6 +11,16 @@
             </span>
           </h1>
   
+          <!-- Action Buttons -->
+          <div class="flex justify-center space-x-4 mb-8">
+            <button
+              @click="goToApproval"
+              class="px-6 py-3 bg-primary-blue text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-primary-blue transition-colors duration-200"
+            >
+              申請承認画面へ
+            </button>
+          </div>
+
           <!-- Summary Stats -->
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div class="card-enhanced overflow-hidden rounded-2xl hover:scale-105 transition-transform duration-300">
@@ -67,10 +77,10 @@
                     <div class="flex items-center">
                       <div>
                         <p class="text-sm font-medium text-text-primary">
-                          {{ employee.name }}
+                          {{ employee.user_name || employee.name }}
                         </p>
                         <p class="text-sm text-text-secondary">
-                          残り{{ employee.remaining_days }}日 / {{ employee.total_days }}日
+                          残り{{ employee.remaining_days }}日 / {{ employee.granted_days }}日
                         </p>
                       </div>
                     </div>
@@ -160,6 +170,10 @@
   
   const viewEmployeeDetail = (userId) => {
     router.push(`/admin/paid-leave/${userId}`)
+  }
+
+  const goToApproval = () => {
+    router.push('/admin/paid-leave-approval')
   }
   
   onMounted(() => {

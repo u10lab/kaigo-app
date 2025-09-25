@@ -4,8 +4,9 @@ import api from '../services/api'
 
 // defineStoreで構成
 export const useAuthStore = defineStore('auth', () => {
-  const user = ref({ id: 1, email: 'admin@test.com', name: '管理者', role: 'admin' })
-  const token = ref('mock-admin-token')
+  const user = ref(null)
+  const token = ref(null)
+  const isInitialized = ref(false)
   
   const isAuthenticated = computed(() => !!token.value)
   const isAdmin = computed(() => user.value?.role === 'admin')
@@ -23,7 +24,10 @@ export const useAuthStore = defineStore('auth', () => {
       return { success: true, user: userData }
     } catch (error) {
       console.error('Login failed:', error)
-      return { success: false, message: error.response?.data?.message || 'Login failed' }
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.error || 
+                          'ログインに失敗しました。メールアドレスとパスワードを確認してください。'
+      return { success: false, message: errorMessage }
     }
   }
 
@@ -42,29 +46,42 @@ export const useAuthStore = defineStore('auth', () => {
   const fetchUser = async () => {
     try {
       const response = await api.get('/user')
-      user.value = response.data
+      user.value = response.data.user
+      return { success: true, user: response.data.user }
     } catch (error) {
       console.error('Fetch user failed:', error)
-      logout()
+      // トークンが無効な場合はログアウト
+      if (error.response?.status === 401) {
+        await logout()
+      }
+      throw error
     }
   }
 
-  // localStorageにトークンが存在する場合はユーザーデータを初期化
-  const storedToken = localStorage.getItem('token')
-  if (storedToken) {
-    token.value = storedToken
-    // 実際のアプリではサーバーでトークンを検証する
-    // デモ用にトークンに基づいてデフォルトユーザーを設定
-    if (storedToken === 'mock-admin-token') {
-      user.value = { id: 1, email: 'admin@test.com', name: '管理者', role: 'admin' }
-    } else if (storedToken === 'mock-helper-token') {
-      user.value = { id: 2, email: 'helper1@test.com', name: '山田太郎', role: 'helper' }
+  // 初期化処理: localStorageにトークンが存在する場合はユーザーデータを取得
+  const initializeAuth = async () => {
+    const storedToken = localStorage.getItem('token')
+    if (storedToken) {
+      token.value = storedToken
+      try {
+        await fetchUser()
+        console.log('Auth initialized successfully:', user.value)
+      } catch (error) {
+        // トークンが無効な場合は削除
+        console.error('Token validation failed:', error)
+        await logout()
+      }
     }
+    isInitialized.value = true
   }
+
+  // 初期化を実行（非同期）
+  initializeAuth()
 
   return {
     user,
     token,
+    isInitialized,
     isAuthenticated,
     isAdmin,
     isHelper,

@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -68,14 +69,42 @@ class AuthController extends Controller
     {
         $user = $request->user();
         
-        return response()->json([
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'employee_id' => $user->employee_id,
-                'role' => $user->role,
-            ],
+        Log::info('User info requested', [
+            'user_id' => $user ? $user->id : 'null',
+            'user_name' => $user ? $user->name : 'null',
+            'user_role' => $user ? $user->role : 'null',
+            'is_authenticated' => $user ? 'yes' : 'no'
         ]);
+
+        if (!$user) {
+            Log::warning('User not authenticated for /user endpoint');
+            return response()->json(['error' => 'Not authenticated'], 401);
+        }
+
+        $userData = [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'employee_id' => $user->employee_id,
+            'role' => $user->role,
+        ];
+        
+        Log::info('Returning user data', $userData);
+
+        return response()->json(['user' => $userData]);
+    }
+
+    /**
+     * ユーザー一覧取得（給与管理用）
+     */
+    public function getUsers(Request $request)
+    {
+        $users = User::where('role', 'helper')
+                    ->where('is_active', true)
+                    ->select('id', 'name', 'email', 'employee_id', 'role')
+                    ->orderBy('name')
+                    ->get();
+
+        return response()->json($users);
     }
 }

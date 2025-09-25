@@ -22,7 +22,7 @@
                 {{ paidLeaveStatus.remaining_days || 0 }}
               </div>
               <div class="text-text-secondary">
-                残り日数 / {{ paidLeaveStatus.total_days || 10 }}日 (年間付与)
+                残り日数 / {{ paidLeaveStatus.granted_days || 10 }}日 (年間付与)
               </div>
             </div>
           </div>
@@ -53,33 +53,48 @@
             </div>
           </div>
   
+          <!-- Application Button -->
+          <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-center">
+              <button
+                @click="goToApplication"
+                class="w-full px-6 py-3 bg-primary-blue text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-primary-blue transition-colors duration-200"
+              >
+                有給休暇を申請する
+              </button>
+            </div>
+          </div>
+
           <!-- Usage History -->
           <div class="bg-white rounded-lg shadow-md p-6">
             <h2 class="text-lg font-semibold text-text-primary mb-4">取得履歴</h2>
-            <div v-if="paidLeaveStatus.usage_history?.length" class="space-y-3">
+            <div v-if="applicationHistory.length > 0" class="space-y-3">
               <div
-                v-for="(record, index) in paidLeaveStatus.usage_history"
+                v-for="(record, index) in applicationHistory"
                 :key="index"
                 class="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0"
               >
                 <div>
                   <div class="font-medium text-text-primary">
-                    {{ formatDate(record.date) }}
+                    {{ formatDateRange(record.start_date, record.end_date) }}
                   </div>
                   <div class="text-sm text-text-secondary">
                     {{ record.reason }}
                   </div>
+                  <div class="text-xs text-text-secondary">
+                    申請日: {{ formatDate(record.created_at) }}
+                  </div>
                 </div>
                 <div :class="[
                   'px-2 py-1 rounded text-xs',
-                  record.status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                  getStatusClass(record.status)
                 ]">
                   {{ getStatusText(record.status) }}
                 </div>
               </div>
             </div>
             <div v-else class="text-center text-text-secondary py-4">
-              取得履歴がありません
+              申請履歴がありません
             </div>
           </div>
         </div>
@@ -98,6 +113,7 @@
   const authStore = useAuthStore()
   
   const paidLeaveStatus = ref({})
+  const applicationHistory = ref([])
   
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('ja-JP', {
@@ -119,9 +135,56 @@
         return '不明'
     }
   }
+
+  const getStatusClass = (status) => {
+    switch (status) {
+      case 'approved':
+        return 'bg-green-100 text-green-800'
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'rejected':
+        return 'bg-red-100 text-red-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const formatDateRange = (startDate, endDate) => {
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+    
+    if (start.toDateString() === end.toDateString()) {
+      return start.toLocaleDateString('ja-JP', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      })
+    }
+    
+    return `${start.toLocaleDateString('ja-JP', {
+      month: 'long',
+      day: 'numeric'
+    })} - ${end.toLocaleDateString('ja-JP', {
+      month: 'long',
+      day: 'numeric'
+    })}`
+  }
+
+  const loadApplicationHistory = async () => {
+    try {
+      const data = await paidLeaveStore.fetchApplications()
+      applicationHistory.value = data
+    } catch (error) {
+      console.error('Failed to load application history:', error)
+    }
+  }
   
   const goBack = () => {
     router.push('/helper')
+  }
+
+  const goToApplication = () => {
+    router.push('/paid-leave/application')
   }
   
   onMounted(async () => {
@@ -131,6 +194,7 @@
         const status = await paidLeaveStore.fetchPaidLeaveStatus(userId)
         paidLeaveStatus.value = status
       }
+      await loadApplicationHistory()
     } catch (error) {
       console.error('Failed to load paid leave status:', error)
     }

@@ -23,14 +23,9 @@
           <span class="mr-2">🏥</span>
           サービス実施中
         </h4>
-        <p class="text-blue-700 font-medium">{{ currentService.client_name }}</p>
-        <p class="text-blue-600 text-sm">{{ currentService.service_type }}</p>
-        <p class="text-blue-500 text-xs mt-2 font-mono">
-          開始時刻: {{ formatTime(currentService.start_time) }}
+        <p class="text-blue-700 font-medium">
+          サービス内容：{{ currentService?.service_type?.name || currentService?.name || 'サービス実施中' }}
         </p>
-        <div class="mt-2 text-xs text-blue-400">
-          経過時間: {{ getElapsedTime(currentService.start_time) }}
-        </div>
       </div>
   
       <div v-if="workStartTime" class="mt-4 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-100">
@@ -94,6 +89,8 @@
         return 'bg-primary-blue'
       case 'finished':
         return 'bg-gray-400'
+      case 'completed':
+        return 'bg-gray-500'
       default:
         return 'bg-gray-400'
     }
@@ -105,6 +102,8 @@
         return props.currentService ? 'サービス実施中' : '勤務中'
       case 'finished':
         return '勤務終了'
+      case 'completed':
+        return '退勤済み'
       default:
         return '未出勤'
     }
@@ -112,19 +111,117 @@
   
   const formatTime = (time) => {
     if (!time) return ''
-    return new Date(time).toLocaleTimeString('ja-JP', { 
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+    
+    // 時刻文字列（例：09:30）をそのまま返す
+    if (typeof time === 'string' && time.includes(':')) {
+      return time
+    }
+    
+    // Dateオブジェクトの場合
+    if (time instanceof Date) {
+      return time.toLocaleTimeString('ja-JP', { 
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    }
+    
+    // その他の場合は文字列として返す
+    return String(time)
   }
   
   const getElapsedTime = (startTime) => {
     if (!startTime) return ''
-    const start = new Date(startTime)
-    const now = new Date()
-    const diff = now - start
-    const hours = Math.floor(diff / (1000 * 60 * 60))
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-    return `${hours}時間${minutes}分`
+    
+    try {
+      let start
+      
+      // 時刻文字列（例：09:30）の場合、今日の日付と組み合わせる
+      if (typeof startTime === 'string' && startTime.includes(':')) {
+        const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD形式
+        start = new Date(`${today}T${startTime}:00`)
+      } else if (startTime instanceof Date) {
+        start = startTime
+      } else {
+        start = new Date(startTime)
+      }
+      
+      // 無効な日付の場合は空文字を返す
+      if (isNaN(start.getTime())) {
+        return ''
+      }
+      
+      const now = new Date()
+      const diff = now - start
+      
+      // 負の値の場合は0時間0分を返す
+      if (diff < 0) {
+        return '0時間0分'
+      }
+      
+      const hours = Math.floor(diff / (1000 * 60 * 60))
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+      return `${hours}時間${minutes}分`
+    } catch (error) {
+      console.error('Error calculating elapsed time:', error)
+      return ''
+    }
+  }
+  
+  // サービス表示名を取得する関数
+  const getServiceDisplayName = (service) => {
+    if (!service) return ''
+    
+    // デバッグ用：サービスオブジェクトの構造をログ出力
+    console.log('StatusDisplay - currentService:', service)
+    console.log('StatusDisplay - service type:', typeof service)
+    
+    // 文字列の場合（JSON文字列の可能性）
+    if (typeof service === 'string') {
+      try {
+        const parsed = JSON.parse(service)
+        return parsed.name || 'サービス実施中'
+      } catch (e) {
+        return 'サービス実施中'
+      }
+    }
+    
+    // オブジェクトの場合
+    if (typeof service === 'object') {
+      // APIレスポンスのデータ構造に基づいてサービス名を取得
+      if (service.serviceType && service.serviceType.name) {
+        return service.serviceType.name
+      }
+      if (service.name) {
+        return service.name
+      }
+      if (service.service_type) {
+        return service.service_type
+      }
+    }
+    
+    return 'サービス実施中'
+  }
+  
+  // サービス開始時刻を取得する関数
+  const getServiceStartTime = (service) => {
+    if (!service) return ''
+    
+    // APIレスポンスのデータ構造に基づいて開始時刻を取得
+    if (service.service_start_time) {
+      return service.service_start_time
+    }
+    if (service.start_time) {
+      return service.start_time
+    }
+    if (service.created_at) {
+      // created_atから時刻部分を抽出
+      const date = new Date(service.created_at)
+      return date.toLocaleTimeString('ja-JP', { 
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    }
+    
+    return ''
   }
   </script>

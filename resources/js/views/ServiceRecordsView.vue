@@ -25,6 +25,17 @@
               </select>
               
               <select
+                v-model="filters.employeeId"
+                @change="loadServiceRecords"
+                class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-blue focus:border-primary-blue"
+              >
+                <option value="">全従業員</option>
+                <option v-for="employee in employees" :key="employee.id" :value="employee.id">
+                  {{ employee.name }}
+                </option>
+              </select>
+              
+              <select
                 v-model="filters.clientId"
                 @change="loadServiceRecords"
                 class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-blue focus:border-primary-blue"
@@ -99,14 +110,8 @@
           <div class="card-enhanced shadow overflow-hidden rounded-2xl">
             <div class="px-4 py-5 sm:px-6 flex justify-between items-center">
               <h2 class="text-lg leading-6 font-medium text-text-primary">
-                サービス実施記録 ({{ formatMonth(filters.month) }})
+                サービス実施記録 {{ filters.month === 'all' ? '(全期間)' : `(${formatMonth(filters.month)})` }}
               </h2>
-              <button
-                @click="exportToCsv"
-                class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
-              >
-                CSV出力
-              </button>
             </div>
             
             <div class="overflow-x-auto">
@@ -180,6 +185,7 @@
               </div>
             </div>
           </div>
+
         </div>
       </div>
     </div>
@@ -189,63 +195,24 @@
   import { ref, computed, onMounted } from 'vue'
   import { useServiceStore } from '../stores/service'
   import Navigation from '../components/Navigation.vue'
+  import api from '../services/api'
   
   const serviceStore = useServiceStore()
   
   const filters = ref({
-    month: '2025-01',
+    month: 'all',
+    employeeId: '',
     clientId: '',
     serviceType: ''
   })
   
-  const serviceRecords = ref([
-    {
-      id: 1,
-      employee_name: '山田太郎',
-      client_name: '山田一郎',
-      service_type: '入浴介護',
-      start_time: '2025-01-15 09:00:00',
-      end_time: '2025-01-15 11:00:00',
-      duration: 120,
-      hourly_rate: 1500
-    },
-    {
-      id: 2,
-      employee_name: '山田太郎',
-      client_name: '田中花子',
-      service_type: '掃除',
-      start_time: '2025-01-15 13:00:00',
-      end_time: '2025-01-15 14:00:00',
-      duration: 60,
-      hourly_rate: 1200
-    },
-    {
-      id: 3,
-      employee_name: '山田太郎',
-      client_name: '佐々木健一',
-      service_type: '生活援助',
-      start_time: '2025-01-15 15:00:00',
-      end_time: '2025-01-15 16:30:00',
-      duration: 90,
-      hourly_rate: 1300
-    },
-    {
-      id: 4,
-      employee_name: '山田太郎',
-      client_name: '山田一郎',
-      service_type: '掃除',
-      start_time: '2025-01-16 10:00:00',
-      end_time: '2025-01-16 11:30:00',
-      duration: 90,
-      hourly_rate: 1200
-    }
-  ])
+  const serviceRecords = ref([])
+  const employees = ref([])
   
   const months = [
-    { value: '2025-01', label: '2025年1月' },
-    { value: '2024-12', label: '2024年12月' },
-    { value: '2024-11', label: '2024年11月' },
-    { value: '2024-10', label: '2024年10月' }
+    { value: 'all', label: '全期間' },
+    { value: '2025-10', label: '2025年10月' },
+    { value: '2025-09', label: '2025年9月' }
   ]
   
   const clients = computed(() => serviceStore.clients)
@@ -253,6 +220,11 @@
   
   const filteredRecords = computed(() => {
     let records = serviceRecords.value
+    
+    if (filters.value.employeeId) {
+      const employee = employees.value.find(e => e.id == filters.value.employeeId)
+      records = records.filter(record => record.employee_name === employee?.name)
+    }
     
     if (filters.value.clientId) {
       const client = clients.value.find(c => c.id === filters.value.clientId)
@@ -302,41 +274,45 @@
     return `${year}年${month}月`
   }
   
+  const errorMessage = ref('')
+  const loading = ref(false)
+
   const loadServiceRecords = async () => {
+    loading.value = true
+    errorMessage.value = ''
+
     try {
-      await serviceStore.fetchServiceRecords(filters.value.month)
-      // 現在はサービス記録にモックデータを使用
+      if (filters.value.month === 'all') {
+        // 全期間の場合は月指定なしで取得
+        const response = await serviceStore.fetchServiceRecords()
+        serviceRecords.value = response.records || []
+      } else {
+        // 特定月の取得
+        const response = await serviceStore.fetchServiceRecords(filters.value.month)
+        serviceRecords.value = response.records || []
+      }
     } catch (error) {
       console.error('Failed to load service records:', error)
+      errorMessage.value = error.message || 'サービス記録の取得に失敗しました'
+      serviceRecords.value = []
+    } finally {
+      loading.value = false
     }
   }
   
-  const exportToCsv = () => {
-    const headers = ['実施日', '利用者', 'サービス種別', '開始時間', '終了時間', '時間数', '時給', '金額']
-    const rows = filteredRecords.value.map(record => [
-      formatDate(record.start_time),
-      record.client_name,
-      record.service_type,
-      formatTime(record.start_time),
-      formatTime(record.end_time),
-      (record.duration / 60).toFixed(1),
-      record.hourly_rate,
-      ((record.duration / 60) * record.hourly_rate).toFixed(0)
-    ])
-    
-    const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n')
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' })
-    const url = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `service_records_${filters.value.month.replace('-', '')}.csv`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    window.URL.revokeObjectURL(url)
-  }
   
+  const fetchEmployees = async () => {
+    try {
+      const response = await api.get('/users')
+      employees.value = response.data.filter(user => user.role !== 'admin') // 管理者以外を従業員として表示
+    } catch (error) {
+      console.error('Failed to fetch employees:', error)
+      employees.value = []
+    }
+  }
+
   onMounted(async () => {
+    await fetchEmployees()
     await serviceStore.fetchClients()
     await serviceStore.fetchServiceTypes()
     loadServiceRecords()

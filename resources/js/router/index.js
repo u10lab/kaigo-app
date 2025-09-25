@@ -40,6 +40,12 @@ const routes = [
     meta: { requiresAuth: true, role: 'helper' }
   },
   {
+    path: '/paid-leave/application',
+    name: 'PaidLeaveApplication',
+    component: () => import('../views/PaidLeaveApplicationView.vue'),
+    meta: { requiresAuth: true, role: 'helper' }
+  },
+  {
     path: '/admin',
     name: 'AdminDashboard',
     component: () => import('../views/AdminDashboardView.vue'),
@@ -70,6 +76,12 @@ const routes = [
     meta: { requiresAuth: true, role: 'admin' }
   },
   {
+    path: '/admin/paid-leave-approval',
+    name: 'PaidLeaveApproval',
+    component: () => import('../views/PaidLeaveApprovalView.vue'),
+    meta: { requiresAuth: true, role: 'admin' }
+  },
+  {
     path: '/admin/csv-export',
     name: 'CsvExport',
     component: () => import('../views/CsvExportView.vue'),
@@ -89,7 +101,7 @@ const router = createRouter({
 })
 
 // ナビゲーションガード
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
   
   console.log('Router guard - navigating to:', to.path, 'from:', from.path)
@@ -100,10 +112,30 @@ router.beforeEach((to, from, next) => {
     return
   }
   
+  // 認証初期化完了を待つ
+  if (!authStore.isInitialized) {
+    console.log('Auth not initialized, waiting...')
+    // 初期化完了まで待機
+    await new Promise(resolve => {
+      const checkInitialized = () => {
+        if (authStore.isInitialized) {
+          resolve()
+        } else {
+          setTimeout(checkInitialized, 10)
+        }
+      }
+      checkInitialized()
+    })
+  }
+  
   // 保護されたルートの認証チェック
   if (to.meta.requiresAuth) {
     if (!authStore.isAuthenticated) {
-      console.log('Not authenticated, redirecting to login')
+      console.log('Not authenticated, redirecting to login', {
+        token: authStore.token,
+        user: authStore.user,
+        isAuthenticated: authStore.isAuthenticated
+      })
       next('/login')
       return
     }

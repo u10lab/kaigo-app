@@ -1,15 +1,24 @@
 <template>
     <div class="min-h-screen bg-bg-secondary p-4">
       <div class="max-w-md mx-auto">
-        <!-- Header -->
-        <div class="mb-6">
+        <!-- Header with Logout Button -->
+        <div class="flex justify-between items-center mb-6">
+          <div class="flex items-center">
+            <button
+              @click="goBack"
+              class="flex items-center text-primary-blue hover:text-blue-700 mr-4"
+            >
+              ← 戻る
+            </button>
+            <h1 class="text-2xl font-bold text-text-primary">サービス開始</h1>
+          </div>
           <button
-            @click="goBack"
-            class="flex items-center text-primary-blue hover:text-blue-700 mb-4"
+            @click="handleLogout"
+            class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center space-x-2 text-sm"
           >
-            ← 戻る
+            <span>🚪</span>
+            <span>ログアウト</span>
           </button>
-          <h1 class="text-2xl font-bold text-text-primary">サービス開始</h1>
         </div>
   
         <!-- Service Form -->
@@ -91,10 +100,12 @@
   import { ref, computed, onMounted } from 'vue'
   import { useRouter } from 'vue-router'
   import { useServiceStore } from '../stores/service'
+  import { useAuthStore } from '../stores/auth'
   import ClockButton from '../components/ClockButton.vue'
   
   const router = useRouter()
   const serviceStore = useServiceStore()
+  const authStore = useAuthStore()
   
   const form = ref({
     clientId: '',
@@ -134,6 +145,24 @@
   
   const goBack = () => {
     router.push('/helper')
+  }
+  
+  const handleLogout = async () => {
+    try {
+      // ログアウト処理
+      await authStore.logout()
+      
+      // ローカルストレージをクリア
+      localStorage.removeItem('workStatus')
+      localStorage.removeItem('workStartTime')
+      
+      // ログインページにリダイレクト
+      router.push('/login')
+    } catch (error) {
+      console.error('Logout failed:', error)
+      // エラーが発生してもログインページにリダイレクト
+      router.push('/login')
+    }
   }
   
   onMounted(async () => {

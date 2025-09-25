@@ -21,78 +21,124 @@ export const useServiceStore = defineStore('service', () => {
 
   const fetchClients = async () => {
     try {
-      // APIが未実装のため、現在はモックデータを返す
+      const response = await api.get('/service/clients')
+      clients.value = response.data.data
       return clients.value
     } catch (error) {
       console.error('Fetch clients failed:', error)
-      throw error
+      // API失敗時はモックデータを使用
+      console.log('Using mock data for clients')
+      return clients.value
     }
   }
 
   const fetchServiceTypes = async () => {
     try {
-      // APIが未実装のため、現在はモックデータを返す
+      const response = await api.get('/service/service-types')
+      serviceTypes.value = response.data.data
       return serviceTypes.value
     } catch (error) {
       console.error('Fetch service types failed:', error)
-      throw error
+      // API失敗時はモックデータを使用
+      console.log('Using mock data for service types')
+      return serviceTypes.value
     }
   }
 
   const fetchServiceRecords = async (month) => {
     try {
-      const response = await api.get('/service/records', { params: { month } })
-      serviceRecords.value = response.data.records
-      return response.data
+      const params = month ? { month } : {}
+      const response = await api.get('/service/records', { params })
+
+      // APIレスポンスの形式を確認して適切に処理
+      if (response.data.success && response.data.data) {
+        // ページネーション対応
+        const records = response.data.data.data || response.data.data
+        serviceRecords.value = records.map(record => ({
+          id: record.id,
+          employee_name: record.user?.name || 'Unknown',
+          client_name: record.client?.name || 'Unknown',
+          service_type: record.service_type?.name || 'Unknown',
+          start_time: record.service_start_time,
+          end_time: record.service_end_time,
+          duration: record.service_minutes || 0,
+          hourly_rate: record.service_type?.hourly_rate || 0
+        }))
+        return { records: serviceRecords.value }
+      } else {
+        throw new Error('Invalid API response format')
+      }
     } catch (error) {
       console.error('Fetch service records failed:', error)
-      // 現在はモックデータを返す
-      serviceRecords.value = [
-        {
-          id: 1,
-          client_name: '山田一郎',
-          service_type: '入浴介護',
-          start_time: '2025-01-15 09:00:00',
-          end_time: '2025-01-15 11:00:00',
-          duration: 120,
-          hourly_rate: 1500
-        }
-      ]
-      return { records: serviceRecords.value }
+      // エラーを再投げして呼び出し元で処理
+      throw new Error(`サービス記録の取得に失敗しました: ${error.message}`)
+    }
+  }
+
+  const fetchCurrentServiceStatus = async () => {
+    try {
+      const response = await api.get('/service/current-status')
+      if (response.data.success && response.data.data) {
+        currentService.value = response.data.data
+        return response.data.data
+      }
+      return null
+    } catch (error) {
+      console.error('Fetch current service status failed:', error)
+      return null
+    }
+  }
+
+  // 現在のサービス状況を確認
+  const checkCurrentService = async () => {
+    try {
+      const response = await api.get('/service/current-status')
+      return response.data
+    } catch (error) {
+      console.error('Failed to check current service:', error)
+      return null
     }
   }
 
   const startService = async (clientId, serviceTypeId) => {
     try {
-      const response = await api.post('/service/start', {
-        client_id: clientId,
-        service_type_id: serviceTypeId
-      })
+      // 既存のサービスがあるかチェック
+      const currentServiceCheck = await checkCurrentService()
+      if (currentServiceCheck?.success && currentServiceCheck.data) {
+        throw new Error('既にサービスが開始されています。先にサービスを終了してください。')
+      }
+
+      const requestData = {
+        client_id: parseInt(clientId),
+        service_type_id: parseInt(serviceTypeId)
+      }
+      console.log('Service start request data:', requestData)
       
-      // サービス開始情報を記録
-      const client = clients.value.find(c => c.id === clientId)
-      const serviceType = serviceTypes.value.find(st => st.id === serviceTypeId)
+      const response = await api.post('/service/start', requestData)
       
-      currentService.value = {
-        id: Date.now(),
-        client_id: clientId,
-        service_type_id: serviceTypeId,
-        client_name: client?.name || 'Unknown',
-        service_type: serviceType?.name || 'Unknown',
-        hourly_rate: serviceType?.hourly_rate || 0,
-        start_time: new Date().toISOString()
+      if (response.data.success) {
+        // API成功時: サーバーから返されたデータをそのまま使用
+        currentService.value = response.data.data
+        console.log('Service started - currentService set to:', currentService.value)
       }
       
       return response.data
     } catch (error) {
       console.error('Start service failed:', error)
+      console.error('Error response:', error.response?.data)
+      console.error('Error status:', error.response?.status)
       
-      // デモ用にローカルでサービス記録を作成
+      // 既存の未終了サービスがある場合のエラーハンドリング
+      if (error.response?.status === 400 && error.response?.data?.message?.includes('既にサービスが開始されています')) {
+        throw new Error('既にサービスが開始されています。先にサービスを終了してください。')
+      }
+      
+      // API失敗時: ローカルでサービス記録を作成
       const client = clients.value.find(c => c.id === clientId)
       const serviceType = serviceTypes.value.find(st => st.id === serviceTypeId)
       
       currentService.value = {
-        id: Date.now(),
+        id: 'local_' + Date.now(), // ローカル用のID
         client_id: clientId,
         service_type_id: serviceTypeId,
         client_name: client?.name || 'Unknown',
@@ -101,7 +147,7 @@ export const useServiceStore = defineStore('service', () => {
         start_time: new Date().toISOString()
       }
       
-      return { success: true, service: currentService.value }
+      return { success: true, data: currentService.value }
     }
   }
 
@@ -109,37 +155,63 @@ export const useServiceStore = defineStore('service', () => {
     try {
       if (!currentService.value) throw new Error('No active service')
       
-      // 現在のユーザー情報を取得
-      const { useAuthStore } = await import('./auth')
-      const authStore = useAuthStore()
-      const currentUser = authStore.user
-      
-      // サービス終了時刻を記録
-      const endTime = new Date().toISOString()
-      const completedService = {
-        ...currentService.value,
-        employee_name: currentUser?.name || 'Unknown',
-        employee_id: currentUser?.id,
-        end_time: endTime,
-        duration: Math.round((new Date(endTime) - new Date(currentService.value.start_time)) / 1000 / 60) // 分単位
-      }
-      
-      // 今日のサービス記録に追加
-      todayServiceRecords.value.push(completedService)
-      
-      // APIコールを試行するが、失敗しても処理を続行
+      // APIコールを試行
       try {
-        const response = await api.post(`/service/${currentService.value.id}/end`)
+        // ローカルIDの場合はAPIコールをスキップ
+        if (currentService.value.id.toString().startsWith('local_')) {
+          throw new Error('Local service, skip API call')
+        }
+        
+        // データベースのIDを使用（APIから返されたID）
+        const serviceId = currentService.value.id
+        const response = await api.post(`/service/${serviceId}/end`)
+        
+        if (response.data.success) {
+          // API成功時: サーバーから返されたデータを使用
+          const completedService = {
+            ...currentService.value,
+            end_time: response.data.data.service_end_time,
+            duration: response.data.data.service_minutes
+          }
+          
+          // 今日のサービス記録に追加
+          todayServiceRecords.value.push(completedService)
+        }
+        
+        // サービス終了
+        currentService.value = null
+        
+        console.log('Service ended successfully via API')
+        return response.data
+        
       } catch (apiError) {
-        console.log('API call failed, but continuing with local state update')
+        console.log('API call failed, using local calculation')
+        
+        // API失敗時: ローカルで計算
+        const { useAuthStore } = await import('./auth')
+        const authStore = useAuthStore()
+        const currentUser = authStore.user
+        
+        // サービス終了時刻を記録
+        const endTime = new Date().toISOString()
+        const completedService = {
+          ...currentService.value,
+          employee_name: currentUser?.name || 'Unknown',
+          employee_id: currentUser?.id,
+          end_time: endTime,
+          duration: Math.round((new Date(endTime) - new Date(currentService.value.start_time)) / 1000 / 60) // 分単位
+        }
+        
+        // 今日のサービス記録に追加
+        todayServiceRecords.value.push(completedService)
+        
+        // サービス終了
+        currentService.value = null
+        
+        console.log('Service ended successfully locally')
+        return { success: true, data: completedService }
       }
       
-      // サービス終了
-      currentService.value = null
-      
-      console.log('Service ended successfully')
-      
-      return { success: true }
     } catch (error) {
       console.error('End service failed:', error)
       // エラーが発生してもサービスをリセット
@@ -157,6 +229,8 @@ export const useServiceStore = defineStore('service', () => {
     fetchClients,
     fetchServiceTypes,
     fetchServiceRecords,
+    fetchCurrentServiceStatus,
+    checkCurrentService,
     startService,
     endService
   }

@@ -31,22 +31,30 @@ Route::get('/freee/callback', [FreeeController::class, 'callback']);
 // 認証が必要なルート
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'user']);
+    Route::get('/users', [AuthController::class, 'getUsers']);
     
     // freee連携API
+    Route::get('/freee/auth-status', [FreeeController::class, 'getAuthStatus']);
+    Route::get('/freee/employees', [FreeeController::class, 'getEmployees']);
+    Route::post('/freee/update-employee-ids', [FreeeController::class, 'updateEmployeeIds']);
+    Route::post('/freee/import-employees', [FreeeController::class, 'importEmployeesFromFreee']);
+    Route::post('/freee/map-employee-id', [FreeeController::class, 'mapEmployeeId']);
     Route::post('/freee/clock-in', [FreeeController::class, 'clockIn']);
     Route::post('/freee/clock-out', [FreeeController::class, 'clockOut']);
-    Route::get('/freee/work-records', [FreeeController::class, 'getWorkRecords']);
-    Route::get('/freee/payroll', [FreeeController::class, 'getPayroll']);
     
-    // サービス記録API
-    Route::prefix('service')->group(function () {
-        Route::post('/start', [ServiceController::class, 'start']);
-        Route::post('/{id}/end', [ServiceController::class, 'end']);
-        Route::get('/records', [ServiceController::class, 'getRecords']);
-        Route::get('/current-status', [ServiceController::class, 'getCurrentStatus']);
-        Route::get('/clients', [ServiceController::class, 'getClients']);
-        Route::get('/service-types', [ServiceController::class, 'getServiceTypes']);
-    });
+        // サービス記録API
+        Route::prefix('service')->group(function () {
+            Route::post('/start', [ServiceController::class, 'start']);
+            Route::post('/{id}/end', [ServiceController::class, 'end']);
+            Route::get('/records', [ServiceController::class, 'getRecords']);
+            Route::get('/current-status', [ServiceController::class, 'getCurrentStatus']);
+            Route::get('/work-status', [ServiceController::class, 'getWorkStatus']);
+            Route::get('/clock-out-status', [ServiceController::class, 'checkClockOutStatus']);
+            Route::post('/clock-in', [ServiceController::class, 'recordClockIn']);
+            Route::post('/clock-out', [ServiceController::class, 'recordClockOut']);
+            Route::get('/clients', [ServiceController::class, 'getClients']);
+            Route::get('/service-types', [ServiceController::class, 'getServiceTypes']);
+        });
     
     // 給与計算API
     Route::prefix('payroll')->group(function () {
@@ -56,16 +64,22 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // 有給休暇管理API
     Route::prefix('paid-leave')->group(function () {
-        Route::get('/all', [PaidLeaveController::class, 'getAllPaidLeaveStatus']);
-        Route::get('/five-day-check', [PaidLeaveController::class, 'checkFiveDayObligation']);
-        Route::post('/use', [PaidLeaveController::class, 'usePaidLeave']);
-        Route::get('/{userId}', [PaidLeaveController::class, 'getPaidLeaveStatus']);
-        Route::put('/{userId}/grant', [PaidLeaveController::class, 'grantPaidLeave']);
+        Route::get('/status', [PaidLeaveController::class, 'getStatus']);
+        Route::get('/all-employees-status', [PaidLeaveController::class, 'getAllEmployeesStatus']);
+        Route::get('/applications', [PaidLeaveController::class, 'getApplications']);
+        Route::post('/apply', [PaidLeaveController::class, 'apply']);
+        Route::post('/approve', [PaidLeaveController::class, 'approve']);
+        Route::post('/reject', [PaidLeaveController::class, 'reject']);
+        Route::get('/annual-check', [PaidLeaveController::class, 'getAnnualLeaveCheck']);
+        
+        
     });
     
     // CSV出力API
     Route::prefix('export')->group(function () {
         Route::get('/care-insurance/{month}', [ExportController::class, 'exportCareInsurance']);
         Route::get('/care-insurance/{month}/stats', [ExportController::class, 'getCareInsuranceStats']);
+        Route::get('/history', [ExportController::class, 'getExportHistory']);
+        Route::get('/download/{historyId}', [ExportController::class, 'downloadFile']);
     });
 });
