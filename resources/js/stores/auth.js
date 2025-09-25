@@ -52,7 +52,7 @@ export const useAuthStore = defineStore('auth', () => {
       console.error('Fetch user failed:', error)
       // トークンが無効な場合はログアウト
       if (error.response?.status === 401) {
-        logout()
+        await logout()
       }
       throw error
     }
@@ -69,7 +69,7 @@ export const useAuthStore = defineStore('auth', () => {
       } catch (error) {
         // トークンが無効な場合は削除
         console.error('Token validation failed:', error)
-        logout()
+        await logout()
       }
     }
     isInitialized.value = true

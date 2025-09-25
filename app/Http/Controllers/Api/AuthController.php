@@ -91,7 +91,7 @@ class AuthController extends Controller
         
         Log::info('Returning user data', $userData);
 
-        return response()->json($userData);
+        return response()->json(['user' => $userData]);
     }
 
     /**

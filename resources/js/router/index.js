@@ -131,7 +131,11 @@ router.beforeEach(async (to, from, next) => {
   // 保護されたルートの認証チェック
   if (to.meta.requiresAuth) {
     if (!authStore.isAuthenticated) {
-      console.log('Not authenticated, redirecting to login')
+      console.log('Not authenticated, redirecting to login', {
+        token: authStore.token,
+        user: authStore.user,
+        isAuthenticated: authStore.isAuthenticated
+      })
       next('/login')
       return
     }
