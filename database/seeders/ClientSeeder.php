@@ -13,26 +13,32 @@ class ClientSeeder extends Seeder
      */
     public function run(): void
     {
-        // 利用者マスタデータ
-        Client::create([
-            'client_number' => 'A001',
-            'name' => '山田一郎',
-            'care_level' => '要介護2',
-            'is_active' => true,
-        ]);
+        // 利用者マスタデータ（重複を防ぐためfirstOrCreateを使用）
+        Client::firstOrCreate(
+            ['client_number' => 'A001'],
+            [
+                'name' => '山田一郎',
+                'care_level' => '要介護2',
+                'is_active' => true,
+            ]
+        );
 
-        Client::create([
-            'client_number' => 'A002',
-            'name' => '田中美子',
-            'care_level' => '要介護1',
-            'is_active' => true,
-        ]);
+        Client::firstOrCreate(
+            ['client_number' => 'A002'],
+            [
+                'name' => '田中美子',
+                'care_level' => '要介護1',
+                'is_active' => true,
+            ]
+        );
 
-        Client::create([
-            'client_number' => 'A003',
-            'name' => '佐々木健一',
-            'care_level' => '要介護3',
-            'is_active' => true,
-        ]);
+        Client::firstOrCreate(
+            ['client_number' => 'A003'],
+            [
+                'name' => '佐々木健一',
+                'care_level' => '要介護3',
+                'is_active' => true,
+            ]
+        );
     }
 }

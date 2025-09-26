@@ -13,23 +13,29 @@ class ServiceTypeSeeder extends Seeder
      */
     public function run(): void
     {
-        // サービス種別マスタデータ
-        ServiceType::create([
-            'name' => '入浴介護',
-            'care_insurance_code' => '111',
-            'hourly_rate' => 1500,
-        ]);
+        // サービス種別マスタデータ（重複を防ぐためfirstOrCreateを使用）
+        ServiceType::firstOrCreate(
+            ['care_insurance_code' => '111'],
+            [
+                'name' => '入浴介護',
+                'hourly_rate' => 1500,
+            ]
+        );
 
-        ServiceType::create([
-            'name' => 'お掃除',
-            'care_insurance_code' => '112',
-            'hourly_rate' => 1200,
-        ]);
+        ServiceType::firstOrCreate(
+            ['care_insurance_code' => '112'],
+            [
+                'name' => 'お掃除',
+                'hourly_rate' => 1200,
+            ]
+        );
 
-        ServiceType::create([
-            'name' => '生活援助',
-            'care_insurance_code' => '113',
-            'hourly_rate' => 1300,
-        ]);
+        ServiceType::firstOrCreate(
+            ['care_insurance_code' => '113'],
+            [
+                'name' => '生活援助',
+                'hourly_rate' => 1300,
+            ]
+        );
     }
 }

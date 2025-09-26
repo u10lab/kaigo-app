@@ -14,8 +14,9 @@ class ProductionSeeder extends Seeder
     public function run(): void
     {
         $this->call([
-            AdminUserSeeder::class,     // 管理者アカウントのみ
-            ServiceTypeSeeder::class,   // サービス種別（実際の事業所に合わせて調整が必要）
+            AdminUserSeeder::class,     // 管理者アカウント
+            ServiceTypeSeeder::class,   // サービス種別
+            ClientSeeder::class,        // テスト用利用者データ
         ]);
 
         $this->command->info('本番環境用の初期データが作成されました。');
