@@ -171,6 +171,32 @@ export const useFreeeStore = defineStore('freee', () => {
     }
   }
 
+  // 勤怠記録更新
+  const updateWorkRecord = async (employeeId, date, workRecordSegments = [], breakRecords = []) => {
+    try {
+      console.log('Attempting to update work record...', {
+        employeeId,
+        date,
+        workRecordSegments,
+        breakRecords
+      })
+
+      const response = await api.post('/freee/update-work-record', {
+        employee_id: employeeId,
+        date,
+        work_record_segments: workRecordSegments,
+        break_records: breakRecords
+      })
+
+      console.log('Work record update successful:', response.data)
+      return response.data
+    } catch (error) {
+      console.error('Failed to update work record:', error)
+      console.error('Error response:', error.response?.data)
+      throw error
+    }
+  }
+
   return {
     isAuthenticated,
     workStatus,
@@ -185,6 +211,7 @@ export const useFreeeStore = defineStore('freee', () => {
     updateEmployeeIds,
     fetchEmployees,
     checkAuthStatus,
-    importEmployeesFromFreee
+    importEmployeesFromFreee,
+    updateWorkRecord
   }
 })

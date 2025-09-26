@@ -542,49 +542,33 @@ const handleUpdateWorkRecord = async () => {
       })
     }
 
-    const response = await fetch('/api/freee/update-work-record', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-      },
-      body: JSON.stringify({
-        employee_id: parseInt(selectedEmployeeId.value),
-        date: selectedDate.value,
-        work_record_segments: workRecordSegments,
-        break_records: breakRecords
-      })
-    })
+    // freeeStoreのメソッドを使用
+    const result = await freeeStore.updateWorkRecord(
+      parseInt(selectedEmployeeId.value),
+      selectedDate.value,
+      workRecordSegments,
+      breakRecords
+    )
 
-    const result = await response.json()
-
-    if (response.ok) {
-      workRecordUpdateResult.value = {
-        type: 'success',
-        title: '勤怠記録更新完了',
-        message: result.message
-      }
-
-      // フォームをリセット
-      selectedEmployeeId.value = ''
-      clockInTime.value = ''
-      clockOutTime.value = ''
-      breakStartTime.value = ''
-      breakEndTime.value = ''
-    } else {
-      workRecordUpdateResult.value = {
-        type: 'error',
-        title: '勤怠記録更新エラー',
-        message: result.error || '勤怠記録の更新に失敗しました。'
-      }
+    workRecordUpdateResult.value = {
+      type: 'success',
+      title: '勤怠記録更新完了',
+      message: result.message
     }
+
+    // フォームをリセット
+    selectedEmployeeId.value = ''
+    clockInTime.value = ''
+    clockOutTime.value = ''
+    breakStartTime.value = ''
+    breakEndTime.value = ''
+
   } catch (error) {
     console.error('Failed to update work record:', error)
     workRecordUpdateResult.value = {
       type: 'error',
       title: '勤怠記録更新エラー',
-      message: '勤怠記録の更新に失敗しました。'
+      message: error.response?.data?.error || error.message || '勤怠記録の更新に失敗しました。'
     }
   } finally {
     isUpdatingWorkRecord.value = false
