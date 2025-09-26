@@ -551,16 +551,20 @@ class FreeeController extends Controller
      */
     public function updateWorkRecord(Request $request)
     {
+        Log::info('updateWorkRecord called with data:', $request->all());
+
         $request->validate([
             'employee_id' => 'required|integer',
             'date' => 'required|date_format:Y-m-d',
             'work_record_segments' => 'sometimes|array',
-            'work_record_segments.*.clock_in_at' => 'required|date_format:Y-m-d H:i:s',
-            'work_record_segments.*.clock_out_at' => 'required|date_format:Y-m-d H:i:s',
+            'work_record_segments.*.clock_in_at' => 'required_with:work_record_segments|date_format:Y-m-d H:i:s',
+            'work_record_segments.*.clock_out_at' => 'required_with:work_record_segments|date_format:Y-m-d H:i:s',
             'break_records' => 'sometimes|array',
-            'break_records.*.clock_in_at' => 'required|date_format:Y-m-d H:i:s',
-            'break_records.*.clock_out_at' => 'required|date_format:Y-m-d H:i:s',
+            'break_records.*.clock_in_at' => 'required_with:break_records|date_format:Y-m-d H:i:s',
+            'break_records.*.clock_out_at' => 'required_with:break_records|date_format:Y-m-d H:i:s',
         ]);
+
+        Log::info('Validation passed successfully');
 
         $token = FreeeToken::first();
         if (!$token) {
