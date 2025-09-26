@@ -245,72 +245,85 @@
       }
       
       // ローカルストレージに勤務状態を保存
-      localStorage.setItem('workStatus', freeeStore.workStatus)
+      localStorage.setItem('workStatus', 'working')
       localStorage.setItem('workStartTime', freeeStore.workStartTime)
+      console.log('Work status saved to localStorage: working')
     } catch (error) {
       console.error('Clock in failed:', error)
       // デモ用にAPI無しでも動作を許可
       freeeStore.workStatus = 'working'
       freeeStore.workStartTime = new Date().toISOString()
-      
+
       // WorkRecordに記録（ローカル状態でも）
       try {
         await api.post('/service/clock-in')
       } catch (recordError) {
         console.error('Failed to record clock in (local):', recordError)
       }
-      
+
       // ローカルストレージに勤務状態を保存
-      localStorage.setItem('workStatus', freeeStore.workStatus)
+      localStorage.setItem('workStatus', 'working')
       localStorage.setItem('workStartTime', freeeStore.workStartTime)
+      console.log('Work status saved to localStorage: working')
     }
   }
   
   const handleClockOut = async () => {
     try {
       await freeeStore.clockOut()
-      
+
       // WorkRecordに記録
       try {
         await api.post('/service/clock-out')
       } catch (recordError) {
         console.error('Failed to record clock out:', recordError)
       }
-      
+
+      // 退勤完了状態に設定
+      freeeStore.workStatus = 'finished'
+      serviceStore.currentService = null
+
       // 退勤時にローカルストレージをクリア
       localStorage.removeItem('workStatus')
       localStorage.removeItem('workStartTime')
+      console.log('Work status set to finished')
     } catch (error) {
       console.error('Clock out failed:', error)
       // デモ用にAPI無しでも動作を許可
-      freeeStore.workStatus = 'completed'
-      freeeStore.currentService = null
-      
+      freeeStore.workStatus = 'finished'
+      serviceStore.currentService = null
+
       // WorkRecordに記録（ローカル状態でも）
       try {
         await api.post('/service/clock-out')
       } catch (recordError) {
         console.error('Failed to record clock out (local):', recordError)
       }
-      
+
       // 退勤時にローカルストレージをクリア
       localStorage.removeItem('workStatus')
       localStorage.removeItem('workStartTime')
+      console.log('Work status set to finished (fallback)')
     }
   }
   
   const handleServiceEnd = async () => {
     try {
       await serviceStore.endService()
-      
+
       // サービス終了後も勤務中状態を維持
-      if (freeeStore.workStatus === 'working') {
-        // ローカルストレージを更新（勤務中状態を維持）
-        localStorage.setItem('workStatus', freeeStore.workStatus)
-        localStorage.setItem('workStartTime', freeeStore.workStartTime)
-      }
+      freeeStore.workStatus = 'working'
+      serviceStore.currentService = null
+
+      // ローカルストレージを更新（勤務中状態を維持）
+      localStorage.setItem('workStatus', 'working')
+      localStorage.setItem('workStartTime', freeeStore.workStartTime)
+      console.log('Service ended, work status remains: working')
     } catch (error) {
       console.error('Service end failed:', error)
+      // エラー時でもサービス状態をクリア
+      serviceStore.currentService = null
+      console.log('Service ended (error fallback)')
     }
   }
   
@@ -367,25 +380,15 @@
       try {
         await freeeStore.fetchWorkRecords()
         
-        // ローカルストレージの状態を優先する
+        // ローカルストレージの状態を優先する（シンプル化）
         const localWorkStatus = localStorage.getItem('workStatus')
         const localWorkStartTime = localStorage.getItem('workStartTime')
-        
-        // ローカルストレージとデータベースの状態を比較して適切に処理
+
         if (localWorkStatus === 'working' && localWorkStartTime) {
-          // データベースの状態も確認
-          if (freeeStore.workStatus === 'idle' || freeeStore.workStatus === 'completed') {
-            // データベースが退勤済みの場合は、ローカルストレージをクリア
-            localStorage.removeItem('workStatus')
-            localStorage.removeItem('workStartTime')
-          } else {
-            // データベースも勤務中の場合は、ローカルストレージの状態を使用
-            freeeStore.workStatus = 'working'
-            freeeStore.workStartTime = localWorkStartTime
-          }
-        } else if (localWorkStatus === 'completed') {
-          // ローカルストレージが'completed'の場合は、データベースの状態に関係なく'completed'に設定
-          freeeStore.workStatus = 'completed'
+          // 出勤済みの状態を復元
+          freeeStore.workStatus = 'working'
+          freeeStore.workStartTime = localWorkStartTime
+          console.log('Work status restored from localStorage: working')
         }
       } catch (error) {
         console.error('Helper: Failed to load work records:', error)
