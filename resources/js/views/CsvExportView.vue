@@ -129,6 +129,7 @@
   import { ref, onMounted } from 'vue'
   import api from '../services/api'
   import Navigation from '../components/Navigation.vue'
+  import { useAuthStore } from '../stores/auth'
   
   const exportForm = ref({
     targetMonth: '2025-09',
@@ -212,29 +213,15 @@
     try {
       loading.value = true
       
-      // 認証状態をチェック
-      try {
-        const authCheck = await api.get('/user')
-        console.log('Auth check response:', authCheck.data)
-        
-        if (!authCheck.data) {
-          console.error('No user data received')
-          alert('ユーザー情報が取得できませんでした。')
-          return
-        }
-        
-        if (authCheck.data.role !== 'admin') {
-          console.error('User role is not admin:', authCheck.data.role)
-          alert(`管理者権限が必要です。現在の権限: ${authCheck.data.role}`)
-          return
-        }
-        
-        console.log('Authentication check passed, user is admin')
-      } catch (authError) {
-        console.error('Authentication check failed:', authError)
-        alert('認証エラーが発生しました。ログインし直してください。')
+      // 認証状態をチェック（認証ストアから直接取得）
+      const authStore = useAuthStore()
+      if (!authStore.user || authStore.user.role !== 'admin') {
+        console.error('User role is not admin:', authStore.user?.role)
+        alert(`管理者権限が必要です。現在の権限: ${authStore.user?.role || '不明'}`)
         return
       }
+      
+      console.log('Authentication check passed, user is admin')
       
       // バックエンドAPIを呼び出してファイルをダウンロード
       console.log('Attempting to download file for history ID:', exportRecord.id)
