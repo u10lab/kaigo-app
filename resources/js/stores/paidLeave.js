@@ -360,32 +360,6 @@ export const usePaidLeaveStore = defineStore('paidLeave', () => {
     }
   }
 
-  /**
-   * freee API経由で有給休暇申請を却下
-   */
-  const rejectApplicationViaFreee = async (applicationId, reason) => {
-    loading.value = true
-    error.value = null
-    try {
-      const response = await api.post('/paid-leave/reject-via-freee', {
-        application_id: applicationId,
-        rejection_reason: reason
-      })
-      if (response.data.success) {
-        // 申請一覧を再取得
-        await fetchApplications()
-        return response.data
-      } else {
-        throw new Error(response.data.message || '申請却下に失敗しました')
-      }
-    } catch (err) {
-      console.error('Reject application via freee failed:', err)
-      error.value = err.response?.data?.message || err.message || '申請却下に失敗しました'
-      throw err
-    } finally {
-      loading.value = false
-    }
-  }
 
   /**
    * freee APIから有給休暇申請を同期
@@ -434,7 +408,6 @@ export const usePaidLeaveStore = defineStore('paidLeave', () => {
     // freee API統合機能
     applyPaidLeaveViaFreee,
     approveApplicationViaFreee,
-    rejectApplicationViaFreee,
     syncApplicationsFromFreee,
     syncEmployeesFromFreee,
     approveAndRegisterToFreee,

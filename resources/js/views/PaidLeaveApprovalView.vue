@@ -333,9 +333,9 @@ const formatDateRange = (startDate, endDate) => {
 
 const approveApplication = async (applicationId) => {
   if (!confirm('この申請を承認しますか？（freee API経由で処理されます）')) return
-  
+
   loading.value = true
-  
+
   try {
     // freee API経由で承認
     await paidLeaveStore.approveApplicationViaFreee(applicationId)
@@ -343,7 +343,7 @@ const approveApplication = async (applicationId) => {
     await loadApplications()
   } catch (error) {
     console.error('Approval via freee failed:', error)
-    
+
     // freee API失敗時はローカル承認にフォールバック
     try {
       await paidLeaveStore.approveApplication(applicationId)
@@ -370,24 +370,14 @@ const confirmReject = async () => {
   loading.value = true
   
   try {
-    // freee API経由で却下
-    await paidLeaveStore.rejectApplicationViaFreee(currentRejectId.value, rejectionReason.value)
-    alert('申請がfreee API経由で却下されました。')
+    // ローカルで却下（freee APIとは連携しない）
+    await paidLeaveStore.rejectApplication(currentRejectId.value, rejectionReason.value)
+    alert('申請が却下されました。')
     await loadApplications()
     showRejectModal.value = false
   } catch (error) {
-    console.error('Rejection via freee failed:', error)
-    
-    // freee API失敗時はローカル却下にフォールバック
-    try {
-      await paidLeaveStore.rejectApplication(currentRejectId.value, rejectionReason.value)
-      alert('申請が却下されました（ローカル管理）。')
-      await loadApplications()
-      showRejectModal.value = false
-    } catch (fallbackError) {
-      console.error('Fallback rejection failed:', fallbackError)
-      alert('却下に失敗しました。')
-    }
+    console.error('Rejection failed:', error)
+    alert('却下に失敗しました。')
   } finally {
     loading.value = false
   }
