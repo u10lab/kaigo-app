@@ -165,16 +165,31 @@
                       {{ formatTime(record.start_time) }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">
-                      {{ formatTime(record.end_time) }}
+                      <span v-if="record.end_time" class="text-text-primary">
+                        {{ formatTime(record.end_time) }}
+                      </span>
+                      <span v-else class="text-gray-400 italic">
+                        未終了
+                      </span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-text-primary">
-                      {{ (record.duration / 60).toFixed(1) }}h
+                      <span v-if="record.end_time">
+                        {{ (record.duration / 60).toFixed(1) }}h
+                      </span>
+                      <span v-else class="text-gray-400 italic">
+                        計算中
+                      </span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">
                       ¥{{ record.hourly_rate?.toLocaleString() }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-primary-green">
-                      ¥{{ ((record.duration / 60) * record.hourly_rate).toLocaleString() }}
+                      <span v-if="record.end_time">
+                        ¥{{ ((record.duration / 60) * record.hourly_rate).toLocaleString() }}
+                      </span>
+                      <span v-else class="text-gray-400 italic">
+                        -
+                      </span>
                     </td>
                   </tr>
                 </tbody>
@@ -263,7 +278,14 @@
   }
   
   const formatTime = (dateTimeString) => {
-    return new Date(dateTimeString).toLocaleTimeString('ja-JP', {
+    if (!dateTimeString) {
+      return '-'
+    }
+    const date = new Date(dateTimeString)
+    if (isNaN(date.getTime())) {
+      return '-'
+    }
+    return date.toLocaleTimeString('ja-JP', {
       hour: '2-digit',
       minute: '2-digit'
     })

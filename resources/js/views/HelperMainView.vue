@@ -350,8 +350,12 @@
   }
   
   const formatTime = (time) => {
-    if (!time) return ''
-    return new Date(time).toLocaleTimeString('ja-JP', { 
+    if (!time) return '-'
+    const date = new Date(time)
+    if (isNaN(date.getTime())) {
+      return '-'
+    }
+    return date.toLocaleTimeString('ja-JP', { 
       hour: '2-digit', 
       minute: '2-digit' 
     })
