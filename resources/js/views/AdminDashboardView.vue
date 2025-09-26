@@ -244,19 +244,12 @@
               <div v-if="freeeAuthenticated" class="border-t border-gray-200 pt-6">
                 <div class="flex items-center justify-between mb-4">
                   <div>
-                    <h3 class="text-lg font-semibold text-text-primary">従業員ID管理</h3>
+                    <h3 class="text-lg font-semibold text-text-primary">従業員管理</h3>
                     <p class="text-sm font-medium text-text-secondary">
-                      freee APIから従業員IDを取得して更新
+                      freee APIから従業員情報を取得・管理
                     </p>
                   </div>
                   <div class="flex gap-3">
-                    <button
-                      @click="handleUpdateEmployeeIds"
-                      :disabled="isUpdatingEmployees"
-                      class="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {{ isUpdatingEmployees ? '更新中...' : '従業員ID更新' }}
-                    </button>
                     <button
                       @click="handleFetchEmployees"
                       :disabled="isFetchingEmployees"
@@ -339,8 +332,7 @@ const paidLeaveStore = usePaidLeaveStore()
 const freeeAuthenticated = ref(false)
 const freeeAuthMessage = ref(null)
 
-// 従業員ID更新関連
-const isUpdatingEmployees = ref(false)
+// 従業員管理関連
 const isFetchingEmployees = ref(false)
 const isImportingEmployees = ref(false)
 const employeeUpdateResult = ref(null)
@@ -427,31 +419,6 @@ const handleFreeeAuth = async () => {
   }
 }
 
-// 従業員ID更新
-const handleUpdateEmployeeIds = async () => {
-  isUpdatingEmployees.value = true
-  employeeUpdateResult.value = null
-  
-  try {
-    const result = await freeeStore.updateEmployeeIds()
-    
-    employeeUpdateResult.value = {
-      type: 'success',
-      title: '従業員ID更新完了',
-      message: `${result.updated_count}名の従業員IDを更新しました。（全${result.total_employees}名中）`,
-      notMatched: result.not_matched_employees || []
-    }
-  } catch (error) {
-    console.error('Failed to update employee IDs:', error)
-    employeeUpdateResult.value = {
-      type: 'error',
-      title: '従業員ID更新エラー',
-      message: error.response?.data?.error || '従業員IDの更新に失敗しました。'
-    }
-  } finally {
-    isUpdatingEmployees.value = false
-  }
-}
 
 // 従業員一覧取得
 const handleFetchEmployees = async () => {

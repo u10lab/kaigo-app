@@ -36,7 +36,6 @@ Route::middleware('auth:sanctum')->group(function () {
     // freee連携API
     Route::get('/freee/auth-status', [FreeeController::class, 'getAuthStatus']);
     Route::get('/freee/employees', [FreeeController::class, 'getEmployees']);
-    Route::post('/freee/update-employee-ids', [FreeeController::class, 'updateEmployeeIds']);
     Route::post('/freee/import-employees', [FreeeController::class, 'importEmployeesFromFreee']);
     Route::post('/freee/map-employee-id', [FreeeController::class, 'mapEmployeeId']);
     Route::post('/freee/clock-in', [FreeeController::class, 'clockIn']);
