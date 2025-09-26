@@ -283,16 +283,16 @@
                         <thead class="bg-gray-50">
                           <tr>
                             <th class="px-2 py-1 text-left text-gray-600">ID</th>
-                            <th class="px-2 py-1 text-left text-gray-600">従業員番号</th>
                             <th class="px-2 py-1 text-left text-gray-600">名前</th>
+                            <th class="px-2 py-1 text-left text-gray-600">メールアドレス</th>
                             <th class="px-2 py-1 text-left text-gray-600">入社日</th>
                           </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                           <tr v-for="emp in employeeUpdateResult.employees" :key="emp.id" class="hover:bg-gray-50">
                             <td class="px-2 py-1 text-gray-900">{{ emp.id }}</td>
-                            <td class="px-2 py-1 text-gray-900">{{ emp.num }}</td>
                             <td class="px-2 py-1 text-gray-900">{{ emp.display_name }}</td>
+                            <td class="px-2 py-1 text-gray-900">{{ emp.email || '未設定' }}</td>
                             <td class="px-2 py-1 text-gray-900">{{ emp.entry_date }}</td>
                           </tr>
                         </tbody>

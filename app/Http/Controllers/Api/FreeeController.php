@@ -250,7 +250,28 @@ class FreeeController extends Controller
         try {
             $accessToken = $token->getValidAccessToken();
             $result = $this->freeeApiService->getEmployees($accessToken, $token->company_id);
-            
+
+            // freee従業員データにローカルユーザー情報をマージ
+            if (isset($result['employees'])) {
+                foreach ($result['employees'] as &$employee) {
+                    // freee IDでローカルユーザーを検索
+                    $localUser = \App\Models\User::where('employee_id', $employee['id'])->first();
+                    if ($localUser) {
+                        $employee['email'] = $localUser->email;
+                        $employee['local_user_id'] = $localUser->id;
+                        $employee['local_user_name'] = $localUser->name;
+                    } else {
+                        // freee名前でローカルユーザーを検索（フォールバック）
+                        $localUserByName = \App\Models\User::where('name', $employee['display_name'])->first();
+                        if ($localUserByName) {
+                            $employee['email'] = $localUserByName->email;
+                            $employee['local_user_id'] = $localUserByName->id;
+                            $employee['local_user_name'] = $localUserByName->name;
+                        }
+                    }
+                }
+            }
+
             return response()->json([
                 'data' => $result,
             ]);
