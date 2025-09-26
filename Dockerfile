@@ -39,9 +39,13 @@ RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 COPY docker/nginx.conf /etc/nginx/nginx.conf
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY docker/php-fpm.conf /usr/local/etc/php-fpm.d/www.conf
+COPY docker/startup.sh /usr/local/bin/startup.sh
 
-# ポート8080を公開（Renderのデフォルトポート）
+# スタートアップスクリプトに実行権限を付与
+RUN chmod +x /usr/local/bin/startup.sh
+
+# ポート8080を公開（Railwayのデフォルトポート）
 EXPOSE 8080
 
-# Supervisordで複数プロセスを管理
-CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+# スタートアップスクリプトを実行
+CMD ["/usr/local/bin/startup.sh"]
