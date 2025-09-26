@@ -41,6 +41,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/freee/map-employee-id', [FreeeController::class, 'mapEmployeeId']);
     Route::post('/freee/clock-in', [FreeeController::class, 'clockIn']);
     Route::post('/freee/clock-out', [FreeeController::class, 'clockOut']);
+    Route::post('/freee/update-work-record', [FreeeController::class, 'updateWorkRecord']);
     
         // サービス記録API
         Route::prefix('service')->group(function () {

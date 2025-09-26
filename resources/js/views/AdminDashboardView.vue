@@ -98,6 +98,116 @@
             </router-link>
           </div>
   
+          <!-- 勤怠修正機能 -->
+          <div v-if="freeeAuthenticated" class="function-card rounded-2xl mb-8">
+            <div class="px-8 py-6 border-b border-gray-200">
+              <h2 class="text-xl font-bold text-text-primary flex items-center">
+                <span class="mr-3 text-2xl">⏰</span>
+                勤怠修正
+              </h2>
+            </div>
+            <div class="p-8">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- 従業員選択 -->
+                <div>
+                  <label class="block text-sm font-medium text-text-primary mb-2">
+                    従業員選択
+                  </label>
+                  <select
+                    v-model="selectedEmployeeId"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">従業員を選択してください</option>
+                    <option v-for="emp in employees" :key="emp.id" :value="emp.id">
+                      {{ emp.display_name }} (ID: {{ emp.id }})
+                    </option>
+                  </select>
+                </div>
+
+                <!-- 日付選択 -->
+                <div>
+                  <label class="block text-sm font-medium text-text-primary mb-2">
+                    対象日
+                  </label>
+                  <input
+                    v-model="selectedDate"
+                    type="date"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <!-- 出勤時刻 -->
+                <div>
+                  <label class="block text-sm font-medium text-text-primary mb-2">
+                    出勤時刻
+                  </label>
+                  <input
+                    v-model="clockInTime"
+                    type="time"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <!-- 退勤時刻 -->
+                <div>
+                  <label class="block text-sm font-medium text-text-primary mb-2">
+                    退勤時刻
+                  </label>
+                  <input
+                    v-model="clockOutTime"
+                    type="time"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <!-- 休憩開始時刻 -->
+                <div>
+                  <label class="block text-sm font-medium text-text-primary mb-2">
+                    休憩開始時刻
+                  </label>
+                  <input
+                    v-model="breakStartTime"
+                    type="time"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <!-- 休憩終了時刻 -->
+                <div>
+                  <label class="block text-sm font-medium text-text-primary mb-2">
+                    休憩終了時刻
+                  </label>
+                  <input
+                    v-model="breakEndTime"
+                    type="time"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <!-- 更新ボタン -->
+              <div class="mt-6 text-center">
+                <button
+                  @click="handleUpdateWorkRecord"
+                  :disabled="!canUpdateWorkRecord || isUpdatingWorkRecord"
+                  class="px-8 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-xl hover:from-purple-600 hover:to-indigo-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {{ isUpdatingWorkRecord ? '更新中...' : '勤怠記録を更新' }}
+                </button>
+              </div>
+
+              <!-- 更新結果表示 -->
+              <div v-if="workRecordUpdateResult" class="mt-4 p-4 rounded-lg" :class="workRecordUpdateResult.type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'">
+                <h4 class="font-semibold" :class="workRecordUpdateResult.type === 'success' ? 'text-green-800' : 'text-red-800'">
+                  {{ workRecordUpdateResult.title }}
+                </h4>
+                <p class="text-sm mt-1" :class="workRecordUpdateResult.type === 'success' ? 'text-green-700' : 'text-red-700'">
+                  {{ workRecordUpdateResult.message }}
+                </p>
+              </div>
+            </div>
+          </div>
+
           <!-- freee Integration -->
           <div class="function-card rounded-2xl">
             <div class="px-8 py-6 border-b border-gray-200">
@@ -218,7 +328,7 @@
   </template>
   
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useFreeeStore } from '../stores/freee'
 import { usePaidLeaveStore } from '../stores/paidLeave'
 import Navigation from '../components/Navigation.vue'
@@ -235,16 +345,42 @@ const isFetchingEmployees = ref(false)
 const isImportingEmployees = ref(false)
 const employeeUpdateResult = ref(null)
 
+// 勤怠修正関連
+const selectedEmployeeId = ref('')
+const selectedDate = ref('')
+const clockInTime = ref('')
+const clockOutTime = ref('')
+const breakStartTime = ref('')
+const breakEndTime = ref('')
+const isUpdatingWorkRecord = ref(false)
+const workRecordUpdateResult = ref(null)
+const employees = ref([])
+
+// 勤怠修正で更新可能かチェック
+const canUpdateWorkRecord = computed(() => {
+  return selectedEmployeeId.value &&
+         selectedDate.value &&
+         clockInTime.value &&
+         clockOutTime.value
+})
+
 // 認証状態の確認とURLパラメータから認証結果を確認
 onMounted(async () => {
   // まず現在の認証状態を確認
   await checkFreeeAuthStatus()
-  
+
+  // 認証済みの場合、従業員一覧を取得
+  if (freeeAuthenticated.value) {
+    await loadEmployees()
+    // 今日の日付をデフォルトに設定
+    selectedDate.value = new Date().toISOString().split('T')[0]
+  }
+
   const urlParams = new URLSearchParams(window.location.search)
   const authStatus = urlParams.get('freee_auth')
   const companyId = urlParams.get('company_id')
   const errorMessage = urlParams.get('message')
-  
+
   if (authStatus === 'success') {
     freeeAuthenticated.value = true
     freeeAuthMessage.value = {
@@ -368,6 +504,90 @@ const handleImportEmployees = async () => {
     }
   } finally {
     isImportingEmployees.value = false
+  }
+}
+
+// 従業員一覧を取得
+const loadEmployees = async () => {
+  try {
+    const result = await freeeStore.fetchEmployees()
+    employees.value = result.data.employees || []
+  } catch (error) {
+    console.error('Failed to load employees:', error)
+  }
+}
+
+// 勤怠記録を更新
+const handleUpdateWorkRecord = async () => {
+  isUpdatingWorkRecord.value = true
+  workRecordUpdateResult.value = null
+
+  try {
+    const workRecordSegments = []
+    const breakRecords = []
+
+    // 出退勤時刻の設定
+    if (clockInTime.value && clockOutTime.value) {
+      workRecordSegments.push({
+        clock_in_at: `${selectedDate.value} ${clockInTime.value}:00`,
+        clock_out_at: `${selectedDate.value} ${clockOutTime.value}:00`
+      })
+    }
+
+    // 休憩時間の設定
+    if (breakStartTime.value && breakEndTime.value) {
+      breakRecords.push({
+        clock_in_at: `${selectedDate.value} ${breakStartTime.value}:00`,
+        clock_out_at: `${selectedDate.value} ${breakEndTime.value}:00`
+      })
+    }
+
+    const response = await fetch('/api/freee/update-work-record', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+      },
+      body: JSON.stringify({
+        employee_id: parseInt(selectedEmployeeId.value),
+        date: selectedDate.value,
+        work_record_segments: workRecordSegments,
+        break_records: breakRecords
+      })
+    })
+
+    const result = await response.json()
+
+    if (response.ok) {
+      workRecordUpdateResult.value = {
+        type: 'success',
+        title: '勤怠記録更新完了',
+        message: result.message
+      }
+
+      // フォームをリセット
+      selectedEmployeeId.value = ''
+      clockInTime.value = ''
+      clockOutTime.value = ''
+      breakStartTime.value = ''
+      breakEndTime.value = ''
+    } else {
+      workRecordUpdateResult.value = {
+        type: 'error',
+        title: '勤怠記録更新エラー',
+        message: result.error || '勤怠記録の更新に失敗しました。'
+      }
+    }
+  } catch (error) {
+    console.error('Failed to update work record:', error)
+    workRecordUpdateResult.value = {
+      type: 'error',
+      title: '勤怠記録更新エラー',
+      message: '勤怠記録の更新に失敗しました。'
+    }
+  } finally {
+    isUpdatingWorkRecord.value = false
   }
 }
 

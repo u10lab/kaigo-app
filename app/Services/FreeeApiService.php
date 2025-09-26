@@ -467,6 +467,57 @@ class FreeeApiService
         }
     }
 
+    /**
+     * 勤怠記録を更新
+     * freee API仕様に合わせてcompany_id、work_record_segments、break_recordsを送信
+     */
+    public function updateWorkRecord(string $accessToken, int $employeeId, string $date, array $workRecordSegments = [], array $breakRecords = [], string $companyId = null): array
+    {
+        try {
+            $token = FreeeToken::first();
+            if (!$token && !$companyId) {
+                throw new \Exception('freee認証情報が見つかりません。');
+            }
+
+            $requestData = [
+                'company_id' => (int)($companyId ?? $token->company_id),
+            ];
+
+            if (!empty($workRecordSegments)) {
+                $requestData['work_record_segments'] = $workRecordSegments;
+            }
+
+            if (!empty($breakRecords)) {
+                $requestData['break_records'] = $breakRecords;
+            }
+
+            Log::info('Freee API work record update request', [
+                'employee_id' => $employeeId,
+                'date' => $date,
+                'request_data' => $requestData
+            ]);
+
+            $response = $this->httpClient->put("{$this->baseUrl}/hr/api/v1/employees/{$employeeId}/work_records/{$date}", [
+                'headers' => [
+                    'Authorization' => "Bearer {$accessToken}",
+                    'Content-Type' => 'application/json',
+                ],
+                'json' => $requestData,
+            ]);
+
+            return json_decode($response->getBody()->getContents(), true);
+        } catch (GuzzleException $e) {
+            $errorResponse = $e->getResponse() ? $e->getResponse()->getBody()->getContents() : null;
+            Log::error('Freee API work record update error: ' . $e->getMessage(), [
+                'employee_id' => $employeeId,
+                'date' => $date,
+                'error_response' => $errorResponse,
+                'status_code' => $e->getResponse() ? $e->getResponse()->getStatusCode() : null
+            ]);
+            throw new \Exception('勤怠記録の更新に失敗しました。');
+        }
+    }
+
 
 
 
