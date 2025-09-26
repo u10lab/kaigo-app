@@ -9,15 +9,24 @@ php artisan cache:clear
 php artisan route:clear
 php artisan view:clear
 
+# 本番環境の設定
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+# APP_KEYが設定されていない場合は生成
+if [ -z "$APP_KEY" ]; then
+    echo "Generating application key..."
+    php artisan key:generate --force
+fi
+
 # マイグレーションの実行
 echo "Running database migrations..."
 php artisan migrate --force
 
-# 本番環境用シーダーの実行（初回のみ）
-if [ "$RUN_SEEDER" = "true" ]; then
-    echo "Running production seeder..."
-    php artisan db:seed --class=ProductionSeeder --force
-fi
+# 本番環境用シーダーの実行
+echo "Running production seeder..."
+php artisan db:seed --class=ProductionSeeder --force
 
 # Supervisordを起動
 echo "Starting supervisord..."
