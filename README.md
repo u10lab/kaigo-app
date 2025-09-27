@@ -10,6 +10,17 @@
 
 訪問介護ステーションの業務効率化を目的としたWebアプリケーションです。freee APIとの連携により、勤怠管理、給与計算、有給休暇管理、サービス記録管理を一元化しています。
 
+#### ログイン用メールアドレス・パスワード
+
+管理者ログイン用　admin@example.com　admin123!
+
+ヘルパーログイン用
+
+名前	　　　メールアドレス	　　　  パスワード
+田中太郎	3396728@imported.local	 password
+佐藤花子	3396729@imported.local	 password
+鈴木次郎	3396733@imported.local	 password
+
 ##  主な機能
 
 ###  認証・ユーザー管理
