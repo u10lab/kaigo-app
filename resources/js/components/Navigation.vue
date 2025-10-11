@@ -1,5 +1,5 @@
 <template>
-    <nav class="bg-slate-800 bg-opacity-95 backdrop-blur-sm shadow-lg border-b border-slate-700 relative z-50">
+    <nav class="nav-bar">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
           <div class="flex items-center">
@@ -15,10 +15,8 @@
                 :key="item.name"
                 @click="navigateTo(item.to)"
                 :class="[
-                  'px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer select-none',
-                  $route.path === item.to
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-slate-200 hover:text-white hover:bg-slate-700 hover:shadow-md hover:scale-105'
+                  'nav-button',
+                  $route.path === item.to ? 'nav-button-active' : 'nav-button-inactive'
                 ]"
               >
                 {{ item.label }}
@@ -48,10 +46,8 @@
             :key="item.name"
             @click="navigateTo(item.to)"
             :class="[
-              'block w-full text-left px-4 py-3 rounded-lg text-base font-medium transition-all duration-200 cursor-pointer',
-              $route.path === item.to
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'text-slate-200 hover:text-white hover:bg-slate-700 hover:shadow-md'
+              'nav-button-mobile',
+              $route.path === item.to ? 'nav-button-active' : 'nav-button-inactive'
             ]"
           >
             {{ item.label }}

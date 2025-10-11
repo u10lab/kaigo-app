@@ -1,12 +1,9 @@
 <template>
-    <div class="min-h-screen bg-bg-secondary p-4">
-      <div class="max-w-md mx-auto">
+    <div class="page-container">
+      <div class="page-content-4xl">
         <!-- Header -->
         <div class="mb-6">
-          <button
-            @click="goBack"
-            class="flex items-center text-primary-blue hover:text-blue-700 mb-4"
-          >
+          <button @click="goBack" class="btn-link-blue mb-4">
             ← 戻る
           </button>
           <h1 class="text-2xl font-bold text-text-primary">有給休暇状況</h1>
@@ -15,58 +12,55 @@
         <!-- Status Cards -->
         <div class="space-y-4">
           <!-- Remaining Days -->
-          <div class="bg-white rounded-lg shadow-md p-6">
+          <div class="card-enhanced rounded-2xl p-6">
             <h2 class="text-lg font-semibold text-text-primary mb-4">残り日数</h2>
             <div class="text-center">
-              <div class="text-4xl font-bold text-primary-blue mb-2">
+              <div class="stat-value-lg">
                 {{ paidLeaveStatus.remaining_days || 0 }}
               </div>
-              <div class="text-text-secondary">
+              <div class="stat-label">
                 残り日数 / {{ paidLeaveStatus.granted_days || 10 }}日 (年間付与)
               </div>
             </div>
           </div>
   
           <!-- Annual Requirement -->
-          <div class="bg-white rounded-lg shadow-md p-6">
+          <div class="card-enhanced rounded-2xl p-6">
             <h2 class="text-lg font-semibold text-text-primary mb-4">年5日取得義務</h2>
             <div class="flex items-center justify-between mb-3">
-              <span class="text-text-secondary">取得済み</span>
+              <span class="stat-label">取得済み</span>
               <span :class="[
-                'text-xl font-bold',
+                'stat-value-xl',
                 (paidLeaveStatus.annual_requirement_used || 0) >= 5 ? 'text-primary-green' : 'text-primary-yellow'
               ]">
                 {{ paidLeaveStatus.annual_requirement_used || 0 }}/5日
               </span>
             </div>
-            <div class="w-full bg-gray-200 rounded-full h-2">
+            <div class="progress-bar-container">
               <div 
                 :class="[
-                  'h-2 rounded-full transition-all',
+                  'progress-bar',
                   (paidLeaveStatus.annual_requirement_used || 0) >= 5 ? 'bg-primary-green' : 'bg-primary-yellow'
                 ]"
                 :style="{ width: `${Math.min(((paidLeaveStatus.annual_requirement_used || 0) / 5) * 100, 100)}%` }"
               ></div>
             </div>
-            <div class="mt-2 text-sm text-text-secondary">
+            <div class="mt-2 stat-label-sm">
               {{ (paidLeaveStatus.annual_requirement_used || 0) >= 5 ? '達成済み' : `残り${5 - (paidLeaveStatus.annual_requirement_used || 0)}日` }}
             </div>
           </div>
   
           <!-- Application Button -->
-          <div class="bg-white rounded-lg shadow-md p-6">
+          <div class="card-enhanced rounded-2xl p-6">
             <div class="flex justify-center">
-              <button
-                @click="goToApplication"
-                class="w-full px-6 py-3 bg-primary-blue text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-primary-blue transition-colors duration-200"
-              >
+              <button @click="goToApplication" class="w-full btn-submit-lg">
                 有給休暇を申請する
               </button>
             </div>
           </div>
 
           <!-- Usage History -->
-          <div class="bg-white rounded-lg shadow-md p-6">
+          <div class="card-enhanced rounded-2xl p-6">
             <h2 class="text-lg font-semibold text-text-primary mb-4">取得履歴</h2>
             <div v-if="applicationHistory.length > 0" class="space-y-3">
               <div

@@ -1,14 +1,12 @@
 <template>
-    <div class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-200">
+    <div class="page-container">
       <Navigation />
-      <div class="absolute inset-0 bg-slate-900 bg-opacity-5"></div>
+      <div class="page-overlay"></div>
       
-      <div class="relative z-10 max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      <div class="page-content">
         <div class="px-4 py-6 sm:px-0">
-          <h1 class="text-4xl font-bold text-slate-800 mb-8 text-center">
-            <span class="bg-gradient-to-r from-slate-700 to-slate-900 bg-clip-text text-transparent">
-              有給休暇管理
-            </span>
+          <h1 class="page-title-gradient">
+            <span>有給休暇管理</span>
           </h1>
   
           <!-- Action Buttons -->

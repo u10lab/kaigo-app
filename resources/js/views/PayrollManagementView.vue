@@ -1,15 +1,13 @@
 <template>
-    <div class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-200">
+    <div class="page-container">
       <Navigation />
-      <div class="absolute inset-0 bg-slate-900 bg-opacity-5"></div>
+      <div class="page-overlay"></div>
       
-      <div class="relative z-10 max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      <div class="page-content">
         <div class="px-4 py-6 sm:px-0">
           <div class="flex justify-between items-center mb-8">
-            <h1 class="text-4xl font-bold text-slate-800 mb-8 text-center">
-              <span class="bg-gradient-to-r from-slate-700 to-slate-900 bg-clip-text text-transparent">
-                給与管理
-              </span>
+            <h1 class="page-title-gradient">
+              <span>給与管理</span>
             </h1>
             
             <!-- Month Selector -->
@@ -17,7 +15,7 @@
               <select
                 v-model="selectedMonth"
                 @change="loadPayrollData"
-                class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-blue focus:border-primary-blue"
+                class="form-select"
               >
                 <option v-for="month in months" :key="month.value" :value="month.value">
                   {{ month.label }}

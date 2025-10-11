@@ -1,19 +1,16 @@
 <template>
-    <div class="min-h-screen gradient-bg">
-      <div class="absolute inset-0 bg-black bg-opacity-10"></div>
+    <div class="page-container-dark gradient-bg">
+      <div class="page-overlay-dark"></div>
       <div class="relative z-10">
       
       <!-- Header with Logout Button -->
-      <div class="flex justify-between items-center p-4">
+      <div class="header-container">
         <div class="flex items-center">
-          <h1 class="text-2xl font-bold text-white">ヘルパーダッシュボード</h1>
+          <h1 class="section-title-white">ヘルパーダッシュボード</h1>
         </div>
         <div class="flex items-center space-x-4">
           <span class="text-white font-medium">{{ authStore.user?.name }}さん</span>
-          <button
-            @click="handleLogout"
-            class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center space-x-2"
-          >
+          <button @click="handleLogout" class="logout-button">
             <span>🚪</span>
             <span>ログアウト</span>
           </button>
@@ -33,7 +30,7 @@
       <!-- Today's Service Records -->
       <div v-if="serviceStore.todayServiceRecords.length > 0" class="p-4">
         <div class="card-enhanced rounded-2xl p-6">
-          <h3 class="text-xl font-bold text-text-primary mb-4 flex items-center">
+          <h3 class="section-title">
             <span class="mr-3 text-2xl">📋</span>
             本日のサービス記録
           </h3>
@@ -41,18 +38,18 @@
             <div
               v-for="(record, index) in serviceStore.todayServiceRecords"
               :key="index"
-              class="flex justify-between items-center p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-100 hover:shadow-md transition-all duration-300"
+              class="service-record-card"
             >
               <div>
-                <p class="text-xs text-text-secondary mb-1 font-medium">{{ record.employee_name || authStore.user?.name }}</p>
-                <p class="font-bold text-text-primary text-lg">{{ record.client_name }}</p>
-                <p class="text-sm text-blue-600 font-medium">{{ getServiceTypeName(record) }}</p>
+                <p class="text-helper">{{ record.employee_name || authStore.user?.name }}</p>
+                <p class="text-value-primary">{{ record.client_name }}</p>
+                <p class="text-highlight-blue">{{ getServiceTypeName(record) }}</p>
               </div>
               <div class="text-right">
-                <p class="text-sm text-text-primary font-mono font-medium">
+                <p class="text-value-secondary">
                   {{ formatTime(record.start_time) }} - {{ formatTime(record.end_time) }}
                 </p>
-                <p class="text-xs text-green-600 font-bold">{{ record.duration }}分</p>
+                <p class="text-highlight-green">{{ record.duration }}分</p>
               </div>
             </div>
           </div>

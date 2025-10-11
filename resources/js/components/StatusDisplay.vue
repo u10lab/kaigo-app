@@ -18,7 +18,7 @@
         <span class="text-text-primary font-semibold text-lg">{{ statusText }}</span>
       </div>
   
-      <div v-if="currentService" class="mt-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100">
+      <div v-if="currentService" class="mt-4 info-card-service">
         <h4 class="font-bold text-blue-800 mb-2 flex items-center">
           <span class="mr-2">🏥</span>
           サービス実施中
@@ -28,7 +28,7 @@
         </p>
       </div>
   
-      <div v-if="workStartTime" class="mt-4 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-100">
+      <div v-if="workStartTime" class="mt-4 info-card-green">
         <p class="text-green-700 font-medium flex items-center">
           <span class="mr-2">🌅</span>
           勤務開始: {{ formatTime(workStartTime) }}

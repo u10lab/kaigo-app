@@ -1,14 +1,12 @@
 <template>
-    <div class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-200">
+    <div class="page-container">
       <Navigation />
-      <div class="absolute inset-0 bg-slate-900 bg-opacity-5"></div>
+      <div class="page-overlay"></div>
       
-      <div class="relative z-10 max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
+      <div class="page-content-4xl">
         <div class="px-4 py-6 sm:px-0">
-          <h1 class="text-4xl font-bold text-slate-800 mb-8 text-center">
-            <span class="bg-gradient-to-r from-slate-700 to-slate-900 bg-clip-text text-transparent">
-              CSV出力
-            </span>
+          <h1 class="page-title-gradient">
+            <span>CSV出力</span>
           </h1>
   
           <!-- Export Form -->
@@ -20,13 +18,13 @@
               <form @submit.prevent="handleExport" class="space-y-6">
                 <!-- Export Period -->
                 <div>
-                  <label class="block text-sm font-medium text-text-primary mb-2">
+                  <label class="form-label">
                     出力対象月
                   </label>
                   <input
                     type="month"
                     v-model="exportForm.targetMonth"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-blue focus:border-primary-blue"
+                    class="form-input"
                     required
                   >
                   <p class="text-sm text-gray-600 mt-1">選択した月の1日から末日までのサービス記録を出力します。</p>
@@ -34,12 +32,12 @@
 
                 <!-- Client Filter -->
                 <div>
-                  <label class="block text-sm font-medium text-text-primary mb-2">
+                  <label class="form-label">
                     利用者絞り込み
                   </label>
                   <select
                     v-model="exportForm.clientId"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-blue focus:border-primary-blue"
+                    class="form-select"
                   >
                     <option value="">全利用者</option>
                     <option v-for="client in clients" :key="client.id" :value="client.id">
@@ -68,47 +66,47 @@
             <div class="px-6 py-4 border-b border-gray-200">
               <h2 class="text-lg font-medium text-text-primary">エクスポート履歴</h2>
             </div>
-            <div class="overflow-x-auto">
-              <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
+            <div class="table-container">
+              <table class="table">
+                <thead class="table-header">
                   <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
+                    <th class="table-header-cell">
                       エクスポート日時
                     </th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
+                    <th class="table-header-cell">
                       対象期間
                     </th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
+                    <th class="table-header-cell">
                       出力件数
                     </th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
+                    <th class="table-header-cell">
                       ファイル名
                     </th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
+                    <th class="table-header-cell">
                       実行者
                     </th>
                   </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
+                <tbody class="table-body">
                   <tr v-for="export_record in exportHistory" :key="export_record.id">
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-text-primary">
+                    <td class="table-cell">
                       {{ formatDateTime(export_record.exported_at) }}
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">
+                    <td class="table-cell">
                       {{ formatPeriod(export_record.period) }}
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">
+                    <td class="table-cell">
                       {{ export_record.record_count }}件
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-primary-blue">
+                    <td class="table-cell-link">
                       <button
                         @click="downloadFile(export_record)"
-                        class="hover:text-blue-700 underline"
+                        class="hover:text-blue-700"
                       >
                         {{ export_record.file_name }}
                       </button>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">
+                    <td class="table-cell">
                       {{ export_record.exported_by }}
                     </td>
                   </tr>

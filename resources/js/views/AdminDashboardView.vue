@@ -1,97 +1,82 @@
 <template>
-    <div class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-200">
+    <div class="page-container">
       <Navigation />
-      <div class="absolute inset-0 bg-slate-900 bg-opacity-5"></div>
+      <div class="page-overlay"></div>
       
       <!-- freee認証結果メッセージ -->
-      <div v-if="freeeAuthMessage" class="fixed top-4 right-4 z-50 max-w-sm">
-        <div :class="freeeAuthMessage.type === 'success' ? 'bg-green-500' : 'bg-red-500'" 
-             class="text-white px-4 py-3 rounded-lg shadow-lg">
+      <div v-if="freeeAuthMessage" class="message-fixed">
+        <div :class="freeeAuthMessage.type === 'success' ? 'message-success' : 'message-error'">
           {{ freeeAuthMessage.text }}
         </div>
       </div>
       
-      <div class="relative z-10 max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      <div class="page-content">
         <div class="px-4 py-6 sm:px-0">
-          <h1 class="text-4xl font-bold text-slate-800 mb-8 text-center">
-            <span class="bg-gradient-to-r from-slate-700 to-slate-900 bg-clip-text text-transparent">
-              管理者ダッシュボード
-            </span>
+          <h1 class="page-title-gradient">
+            <span>管理者ダッシュボード</span>
           </h1>
           
           <!-- Clickable Function Cards -->
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <router-link
-              to="/admin/payroll"
-              class="function-card overflow-hidden rounded-2xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer"
-            >
+          <div class="grid-1-md-2-lg-4 mb-8">
+            <router-link to="/admin/payroll" class="function-card-link">
               <div class="p-8">
                 <div class="flex items-center">
                   <div class="flex-shrink-0">
-                    <div class="w-14 h-14 bg-gradient-to-r from-green-400 to-emerald-500 rounded-2xl flex items-center justify-center shadow-lg pulse-on-hover">
+                    <div class="icon-container-green pulse-on-hover">
                       <span class="text-white text-2xl">💰</span>
                     </div>
                   </div>
                   <div class="ml-4">
                     <h3 class="text-xl font-bold text-text-primary">給与管理</h3>
-                    <p class="text-sm text-blue-600 font-medium">→ クリックして詳細へ</p>
+                    <p class="text-highlight-blue">→ クリックして詳細へ</p>
                   </div>
                 </div>
               </div>
             </router-link>
   
-            <router-link
-              to="/admin/paid-leave"
-              class="function-card overflow-hidden rounded-2xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer"
-            >
+            <router-link to="/admin/paid-leave" class="function-card-link">
               <div class="p-8">
                 <div class="flex items-center">
                   <div class="flex-shrink-0">
-                    <div class="w-14 h-14 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg pulse-on-hover">
+                    <div class="icon-container-yellow pulse-on-hover">
                       <span class="text-white text-2xl">🏖️</span>
                     </div>
                   </div>
                   <div class="ml-4">
                     <h3 class="text-xl font-bold text-text-primary">有給管理</h3>
-                    <p class="text-sm text-blue-600 font-medium">→ クリックして詳細へ</p>
+                    <p class="text-highlight-blue">→ クリックして詳細へ</p>
                   </div>
                 </div>
               </div>
             </router-link>
   
-            <router-link
-              to="/admin/service-records"
-              class="function-card overflow-hidden rounded-2xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer"
-            >
+            <router-link to="/admin/service-records" class="function-card-link">
               <div class="p-8">
                 <div class="flex items-center">
                   <div class="flex-shrink-0">
-                    <div class="w-14 h-14 bg-gradient-to-r from-blue-400 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg pulse-on-hover">
+                    <div class="icon-container-blue pulse-on-hover">
                       <span class="text-white text-2xl">📋</span>
                     </div>
                   </div>
                   <div class="ml-4">
                     <h3 class="text-xl font-bold text-text-primary">サービス記録</h3>
-                    <p class="text-sm text-blue-600 font-medium">→ クリックして詳細へ</p>
+                    <p class="text-highlight-blue">→ クリックして詳細へ</p>
                   </div>
                 </div>
               </div>
             </router-link>
   
-            <router-link
-              to="/admin/csv-export"
-              class="function-card overflow-hidden rounded-2xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer"
-            >
+            <router-link to="/admin/csv-export" class="function-card-link">
               <div class="p-8">
                 <div class="flex items-center">
                   <div class="flex-shrink-0">
-                    <div class="w-14 h-14 bg-gradient-to-r from-gray-500 to-gray-600 rounded-2xl flex items-center justify-center shadow-lg pulse-on-hover">
+                    <div class="icon-container bg-gradient-to-r from-gray-500 to-gray-600 pulse-on-hover">
                       <span class="text-white text-2xl">📊</span>
                     </div>
                   </div>
                   <div class="ml-4">
                     <h3 class="text-xl font-bold text-text-primary">CSV出力</h3>
-                    <p class="text-sm text-blue-600 font-medium">→ クリックして詳細へ</p>
+                    <p class="text-highlight-blue">→ クリックして詳細へ</p>
                   </div>
                 </div>
               </div>

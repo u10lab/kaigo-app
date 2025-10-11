@@ -13,7 +13,7 @@
         <form class="mt-8 space-y-6" @submit.prevent="handleLogin">
           <div class="rounded-md shadow-sm space-y-4">
             <div>
-              <label for="email" class="block text-sm font-medium text-text-primary mb-2">
+              <label for="email" class="form-label">
                 メールアドレス
               </label>
               <input
@@ -21,13 +21,13 @@
                 v-model="form.email"
                 type="email"
                 required
-                class="relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-text-primary rounded-md focus:outline-none focus:ring-primary-blue focus:border-primary-blue focus:z-10 sm:text-sm"
+                class="form-input"
                 placeholder="メールアドレスを入力"
               />
             </div>
             
             <div>
-              <label for="password" class="block text-sm font-medium text-text-primary mb-2">
+              <label for="password" class="form-label">
                 パスワード
               </label>
               <input
@@ -35,7 +35,7 @@
                 v-model="form.password"
                 type="password"
                 required
-                class="relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-text-primary rounded-md focus:outline-none focus:ring-primary-blue focus:border-primary-blue focus:z-10 sm:text-sm"
+                class="form-input"
                 placeholder="パスワードを入力"
               />
             </div>

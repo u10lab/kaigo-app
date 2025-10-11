@@ -1,9 +1,9 @@
 <template>
-    <div class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-200">
+    <div class="page-container">
       <Navigation />
-      <div class="absolute inset-0 bg-slate-900 bg-opacity-5"></div>
+      <div class="page-overlay"></div>
       
-      <div class="relative z-10 max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
+      <div class="page-content-4xl">
         <div class="px-4 py-6 sm:px-0">
           <!-- Header -->
           <div class="mb-8">

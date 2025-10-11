@@ -1,32 +1,29 @@
 <template>
-  <div class="min-h-screen bg-bg-secondary p-4">
-    <div class="max-w-md mx-auto">
+  <div class="page-container">
+    <div class="page-content-4xl">
       <!-- Header -->
       <div class="mb-6">
-        <button
-          @click="goBack"
-          class="flex items-center text-primary-blue hover:text-blue-700 mb-4"
-        >
+        <button @click="goBack" class="btn-link-blue mb-4">
           ← 戻る
         </button>
         <h1 class="text-2xl font-bold text-text-primary">有給休暇申請</h1>
       </div>
 
       <!-- Current Status -->
-      <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+      <div class="card-enhanced rounded-2xl p-6 mb-6">
         <h2 class="text-lg font-semibold text-text-primary mb-4">現在の状況</h2>
         <div class="grid grid-cols-2 gap-4">
           <div class="text-center">
-            <div class="text-2xl font-bold text-primary-blue">
+            <div class="stat-value-xl text-primary-blue">
               {{ paidLeaveStatus.remaining_days || 0 }}
             </div>
-            <div class="text-sm text-text-secondary">残り日数</div>
+            <div class="stat-label-sm">残り日数</div>
           </div>
           <div class="text-center">
-            <div class="text-2xl font-bold text-primary-green">
+            <div class="stat-value-xl text-primary-green">
               {{ paidLeaveStatus.granted_days || 0 }}
             </div>
-            <div class="text-sm text-text-secondary">年間付与</div>
+            <div class="stat-label-sm">年間付与</div>
           </div>
         </div>
       </div>
@@ -34,12 +31,12 @@
       <!-- Application Form -->
       <form @submit.prevent="submitApplication" class="space-y-6">
         <!-- Date Selection -->
-        <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="card-enhanced rounded-2xl p-6">
           <h2 class="text-lg font-semibold text-text-primary mb-4">取得日</h2>
 
           <div class="space-y-4">
             <div>
-              <label class="block text-sm font-medium text-text-primary mb-2">
+              <label class="form-label">
                 有給休暇取得日 <span class="text-red-500">*</span>
               </label>
               <input
@@ -48,12 +45,12 @@
                 :min="minDate"
                 required
                 @input="updateFormDates"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
+                class="form-input"
               />
             </div>
 
             <!-- 半日休暇オプション -->
-            <div v-if="form.date" class="bg-blue-50 p-4 rounded-lg">
+            <div v-if="form.date" class="info-card-blue">
               <h3 class="text-sm font-medium text-blue-800 mb-3">半日休暇オプション</h3>
               <div class="space-y-2">
                 <label class="flex items-center">
@@ -72,7 +69,7 @@
                   </label>
                   <select
                     v-model="form.half_day_period"
-                    class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    class="form-select"
                   >
                     <option value="morning">午前（9:00-12:00）</option>
                     <option value="afternoon">午後（13:00-17:00）</option>
@@ -81,7 +78,7 @@
               </div>
             </div>
             
-            <div v-if="calculatedDays > 0" class="bg-blue-50 p-3 rounded-md">
+            <div v-if="calculatedDays > 0" class="info-card-blue">
               <p class="text-sm text-primary-blue">
                 申請日数: <span class="font-semibold">{{ calculatedDays }}日</span>
               </p>
@@ -91,11 +88,11 @@
 
 
         <!-- Reason -->
-        <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="card-enhanced rounded-2xl p-6">
           <h2 class="text-lg font-semibold text-text-primary mb-4">申請理由</h2>
           
           <div>
-            <label class="block text-sm font-medium text-text-primary mb-2">
+            <label class="form-label">
               理由 <span class="text-red-500">*</span>
             </label>
             <textarea
@@ -104,7 +101,7 @@
               maxlength="500"
               placeholder="申請理由を入力してください"
               required
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-blue"
+              class="form-textarea"
             ></textarea>
             <p class="text-xs text-text-secondary mt-1">
               {{ form.reason.length }}/500文字
@@ -123,19 +120,11 @@
 
         <!-- Submit Button -->
         <div class="flex space-x-4">
-          <button
-            type="button"
-            @click="goBack"
-            class="flex-1 px-4 py-2 border border-gray-300 rounded-md text-text-primary hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500"
-          >
+          <button type="button" @click="goBack" class="flex-1 btn-secondary">
             キャンセル
           </button>
           
-          <button
-            type="submit"
-            :disabled="loading || !isFormValid"
-            class="flex-1 px-4 py-2 bg-primary-blue text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-primary-blue disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          <button type="submit" :disabled="loading || !isFormValid" class="flex-1 btn-submit">
             <span v-if="loading">申請中...</span>
             <span v-else>申請する</span>
           </button>
